@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NOMINA — Sistema Integral de Cálculo de Beneficios y Expediente Laboral (LOTTT)</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Barra Superior -->
+  <header class="topbar no-print">
+    <div class="brand" id="btn-brand-home" title="Volver al inicio de expedientes">
+      <div class="brand-icon">N</div>
+      <div>
+        <div class="brand-title">NOMINA</div>
+        <div class="brand-sub">Expedientes Laborales y Cálculo de Beneficios · LOTTT Venezuela</div>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <button type="button" class="btn btn-ghost-light btn-sm" id="btn-nav-expedientes">
+        Expedientes (<span id="top-exp-count">0</span>)
+      </button>
+      <button type="button" class="btn btn-ghost-light btn-sm" id="btn-open-empresas" title="Crear y administrar carpetas por empresa">
+        📁 Carpetas de Empresa (<span id="top-companies-count">1</span>)
+      </button>
+      <button type="button" class="btn btn-ghost-light btn-sm" id="btn-open-legal">
+        Base Legal LOTTT
+      </button>
+      <button type="button" class="btn btn-ghost-light btn-sm" id="btn-export-json">
+        Exportar JSON
+      </button>
+      <label class="btn btn-ghost-light btn-sm" style="cursor:pointer;">
+        Importar JSON
+        <input type="file" id="input-import-json" accept="application/json,.json" class="hidden">
+      </label>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ====================================================================
+         VISTA 1: INICIO / CREACIÓN DE EXPEDIENTE (NOMBRE, APELLIDO, CÉDULA)
+         ==================================================================== -->
+    <section id="landing-view">
+      <div class="landing-grid">
+
+        <!-- Tarjeta de Apertura de Expediente -->
+        <div class="hero-card">
+          <div class="hero-card-header">
+            <span class="badge-law">LOTTT · IVSS · FAOV · INCES</span>
+            <h1>Crear Expediente del Trabajador</h1>
+            <p>Ingresa el nombre, apellido y cédula de identidad para abrir un expediente laboral completo y calcular todos sus beneficios.</p>
+          </div>
+          <div class="hero-card-body">
+            <form id="form-new-expediente" autocomplete="off">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="new-nombre">Nombre <span class="req">*</span></label>
+                  <input type="text" id="new-nombre" placeholder="Ej. Edith Raiza" required>
+                </div>
+                <div class="form-group">
+                  <label for="new-apellido">Apellido <span class="req">*</span></label>
+                  <input type="text" id="new-apellido" placeholder="Ej. Sabariego Lara" required>
+                </div>
+                <div class="form-group full">
+                  <label for="new-cedula">Cédula de Identidad <span class="req">*</span></label>
+                  <div class="input-group">
+                    <select id="new-cedula-prefijo" style="width:76px;flex-shrink:0;border-radius:6px 0 0 6px;border-right:none;">
+                      <option value="V-">V-</option>
+                      <option value="E-">E-</option>
+                    </select>
+                    <input type="text" id="new-cedula" placeholder="Ej. 14.820.415" required>
+                  </div>
+                </div>
+              </div>
+
+              <hr style="border:none;border-top:1px solid var(--border-color);margin:18px 0 14px;">
+              <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px;">
+                Asignación de Carpeta y Datos Laborales
+              </div>
+
+              <!-- Selector de Carpeta de Empresa -->
+              <div class="form-group" style="margin-bottom:14px;">
+                <label for="new-empresa-select">Carpeta de Empresa / Entidad de Trabajo <span class="req">*</span></label>
+                <div class="input-group">
+                  <select id="new-empresa-select" style="flex:1;" required></select>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-quick-new-empresa" style="white-space:nowrap;border-radius:0 6px 6px 0;" title="Crear nueva carpeta de empresa">+ Nueva Empresa</button>
+                </div>
+                <span class="hint">El expediente se archivará automáticamente en la carpeta de esta empresa.</span>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="new-cargo">Cargo</label>
+                  <input type="text" id="new-cargo" placeholder="Ej. Analista Contable">
+                </div>
+                <div class="form-group">
+                  <label for="new-fecha-ingreso">Fecha de Ingreso</label>
+                  <input type="date" id="new-fecha-ingreso">
+                </div>
+                <div class="form-group">
+                  <label for="new-sueldo"><strong>Sueldo Mensual Base</strong></label>
+                  <input type="number" id="new-sueldo" step="0.01" min="0" placeholder="0.00" style="font-weight:700;">
+                </div>
+                <div class="form-group">
+                  <label for="new-moneda">Moneda</label>
+                  <select id="new-moneda">
+                    <option value="Bs.">Bolívares (Bs.)</option>
+                    <option value="USD">Dólares (USD)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="margin-top:20px;display:flex;gap:10px;">
+                <button type="submit" class="btn btn-emerald" style="flex:1;padding:11px 18px;font-size:14px;">
+                  Crear Expediente y Calcular Beneficios →
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Directorio de Expedientes Guardados -->
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Expedientes Registrados</h2>
+                <p class="card-subtitle">Organizados por carpeta de empresa y almacenados localmente.</p>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm" id="btn-load-samples">
+                Cargar Casos de Estudio (PDF)
+              </button>
+            </div>
+            <div class="card-body">
+              <!-- Filtro de Carpetas por Empresa -->
+              <div class="company-folder-wrapper" style="margin-bottom:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                  <span style="font-size:11.5px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em;">📁 Carpetas por Empresa:</span>
+                  <button type="button" class="btn btn-ghost-light btn-xs" id="btn-add-folder-quick" style="color:var(--emerald-700);font-weight:700;">+ Nueva Carpeta</button>
+                </div>
+                <div class="company-folder-tabs" id="company-folder-tabs"></div>
+              </div>
+
+              <!-- Banner de Carpeta Activa Seleccionada -->
+              <div id="company-active-banner" class="company-active-banner hidden"></div>
+
+              <div class="form-group" style="margin-bottom:14px;">
+                <input type="text" id="search-expedientes" placeholder="Buscar por nombre, apellido, cédula o cargo...">
+              </div>
+              <div id="expedientes-list" class="expediente-list"></div>
+            </div>
+          </div>
+
+          <div class="callout callout-info">
+            <div>
+              <strong>¿Qué incluye cada expediente de NOMINA?</strong><br>
+              Registro histórico de <strong>sueldos devengados</strong>, cálculo exacto de <strong>tiempo de servicio</strong>, <strong>vacaciones pagadas, disfrutadas y pendientes</strong> (Art. 190-196 LOTTT), <strong>utilidades</strong> (30 a 120 días y distribución del 15% ISLR, Art. 131-140), <strong>deducciones y aportes parafiscales</strong> (IVSS SSO/PIE, FAOV, INCES), <strong>estructura jerárquica</strong> (a quién reporta y personal a cargo) y <strong>resumen integral listo para imprimir</strong> (Recibo Art. 106 LOTTT).
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         VISTA 2: ESPACIO DE TRABAJO DEL EXPEDIENTE ACTIVO
+         ==================================================================== -->
+    <section id="workspace-view" class="hidden">
+
+      <!-- Banner de Identidad del Trabajador -->
+      <div class="worker-banner no-print">
+        <div class="worker-identity">
+          <div class="worker-avatar-lg" id="ws-avatar">--</div>
+          <div>
+            <h2 id="ws-fullname">Nombre del Trabajador</h2>
+            <div class="worker-pills">
+              <span class="pill" id="ws-pill-cedula">C.I.: —</span>
+              <span class="pill" id="ws-pill-codigo">EXP: —</span>
+              <span class="pill" id="ws-pill-cargo">Cargo: —</span>
+              <span class="pill pill-emerald" id="ws-pill-antiguedad">Antigüedad: —</span>
+              <span class="pill pill-emerald" id="ws-pill-salario">Salario Normal: —</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-ghost-light btn-sm" id="btn-back-list">
+            ← Cambiar Expediente
+          </button>
+          <button type="button" class="btn btn-emerald btn-sm" id="btn-quick-print-tab">
+            🖨️ Resumen Listo para Imprimir
+          </button>
+        </div>
+      </div>
+
+      <!-- Pestañas del Expediente -->
+      <nav class="tabs-bar no-print" id="workspace-tabs">
+        <button type="button" class="tab-btn active" data-tab="tab-expediente">1. Expediente y Tiempo de Servicio</button>
+        <button type="button" class="tab-btn" data-tab="tab-jerarquia">2. Personal a Cargo / Reporta a</button>
+        <button type="button" class="tab-btn" data-tab="tab-sueldos">3. Sueldos Devengados y Recargos</button>
+        <button type="button" class="tab-btn" data-tab="tab-vacaciones">4. Vacaciones y Bono Vacacional</button>
+        <button type="button" class="tab-btn" data-tab="tab-utilidades">5. Utilidades y Parafiscales</button>
+        <button type="button" class="tab-btn tab-print" data-tab="tab-print">6. Resumen Listo para Imprimir</button>
+      </nav>
+
+      <!-- ================================================================
+           TAB 1: EXPEDIENTE, DATOS LABORALES Y TIEMPO DE SERVICIO
+           ================================================================ -->
+      <div id="tab-expediente" class="tab-panel">
+        <!-- KPI Tiempo de Servicio -->
+        <div class="kpi-grid" id="kpi-tiempo-servicio"></div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Datos de Identificación y Relación Laboral</h3>
+              <p class="card-subtitle">Soporte legal del expediente conforme al Art. 22, 104 y 106 de la LOTTT.</p>
+            </div>
+            <span class="status-badge status-info" id="badge-saved-indicator">Guardado automáticamente</span>
+          </div>
+          <div class="card-body">
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label for="exp-nombre">Nombre <span class="req">*</span></label>
+                <input type="text" id="exp-nombre" data-field="nombre">
+              </div>
+              <div class="form-group">
+                <label for="exp-apellido">Apellido <span class="req">*</span></label>
+                <input type="text" id="exp-apellido" data-field="apellido">
+              </div>
+              <div class="form-group">
+                <label for="exp-cedula">Cédula de Identidad <span class="req">*</span></label>
+                <input type="text" id="exp-cedula" data-field="cedula">
+              </div>
+
+              <div class="form-group">
+                <label for="exp-cargo">Cargo / Puesto</label>
+                <input type="text" id="exp-cargo" data-field="cargo" placeholder="Ej. Coordinador de Nómina">
+              </div>
+              <div class="form-group">
+                <label for="exp-departamento">Departamento / Unidad</label>
+                <input type="text" id="exp-departamento" data-field="departamento" placeholder="Ej. Administración">
+              </div>
+              <div class="form-group">
+                <label for="exp-moneda">Moneda del Expediente</label>
+                <select id="exp-moneda" data-field="moneda">
+                  <option value="Bs.">Bolívares (Bs.)</option>
+                  <option value="USD">Dólares (USD)</option>
+                </select>
+              </div>
+
+              <div class="form-group highlight-salary">
+                <label for="exp-sueldo-base"><strong>Sueldo Base Mensual</strong> <span class="req">*</span></label>
+                <div class="input-group">
+                  <span class="input-prefix" id="exp-sueldo-cur">Bs.</span>
+                  <input type="number" id="exp-sueldo-base" step="0.01" min="0" placeholder="0.00" style="font-weight:700;color:var(--emerald-700);">
+                </div>
+                <span class="hint">Modifica o corrige el sueldo base mensual en cualquier momento.</span>
+              </div>
+
+              <div class="form-group">
+                <label for="exp-fecha-ingreso">Fecha de Ingreso <span class="req">*</span></label>
+                <input type="date" id="exp-fecha-ingreso" data-field="fechaIngreso">
+              </div>
+              <div class="form-group">
+                <label for="exp-fecha-corte">Fecha de Corte (Cálculo Antigüedad)</label>
+                <input type="date" id="exp-fecha-corte" data-field="fechaCorte">
+              </div>
+              <div class="form-group">
+                <label for="exp-tipo-contrato">Tipo de Contrato</label>
+                <select id="exp-tipo-contrato" data-field="tipoContrato">
+                  <option value="indeterminado">Tiempo Indeterminado</option>
+                  <option value="determinado">Tiempo Determinado</option>
+                  <option value="obra">Para una Obra Determinada</option>
+                  <option value="honorarios_subordinacion">Honorarios con Subordinación (Art. 22 Primacía)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="exp-modalidad-salario">Modalidad Salarial (LOTTT)</label>
+                <select id="exp-modalidad-salario" data-field="modalidadSalario">
+                  <option value="tiempo">Por Unidad de Tiempo (Diario/Semanal/Quincenal/Mensual)</option>
+                  <option value="obra">Por Unidad de Obra (Pieza/Tarea/Volumen)</option>
+                  <option value="comision">Por Comisión (Ventas/Actividades)</option>
+                  <option value="mixto">Mixto</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="exp-riesgo-ivss">Nivel de Riesgo IVSS (Art. 67 LSS)</label>
+                <select id="exp-riesgo-ivss" data-field="riesgoIvss">
+                  <option value="minimo">Riesgo Mínimo (15,5%: Patrono 9%+2% / Emp. 4%+0,5%)</option>
+                  <option value="medio">Riesgo Medio (16,5%: Patrono 10%+2% / Emp. 4%+0,5%)</option>
+                  <option value="maximo">Riesgo Máximo (17,5%: Patrono 11%+2% / Emp. 4%+0,5%)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="exp-beneficios-reg">Beneficios Regularizados Mensuales (Salario Integral)</label>
+                <input type="number" id="exp-beneficios-reg" data-field="beneficiosRegularizados" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="form-grid-2" style="margin-top:14px;">
+              <label class="checkbox-row">
+                <input type="checkbox" id="exp-aplica-inces" data-field="aplicaInces">
+                <span>Entidad con 5 o más trabajadores (Aplica INCES: 2% patronal trimestral / 0,5% retención utilidades, Art. 49-50)</span>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="exp-sin-fines-lucro" data-field="entidadSinFinesLucro">
+                <span>Entidad sin fines de lucro (Art. 140 LOTTT: exenta de utilidades, otorga bonificación de 30 días)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Datos de la Entidad de Trabajo (Membrete del Resumen)</h3>
+              <p class="card-subtitle">Aparecerán en el encabezado y bloque de firmas del documento imprimible.</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="form-group full" style="margin-bottom:12px;">
+              <label for="exp-empresa-select">Carpeta de Empresa / Entidad Asignada</label>
+              <div class="input-group">
+                <select id="exp-empresa-select" style="flex:1;"></select>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-quick-new-empresa-ws" style="white-space:nowrap;border-radius:0 6px 6px 0;" title="Crear nueva carpeta de empresa">+ Nueva Empresa</button>
+              </div>
+              <span class="hint">Al seleccionar una empresa, se reasigna el expediente y se actualizan automáticamente el membrete, RIF y dirección fiscal.</span>
+            </div>
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label for="exp-empresa-nombre">Razón Social / Empresa</label>
+                <input type="text" id="exp-empresa-nombre" data-field="empresaNombre" placeholder="EMPRESA, C.A.">
+              </div>
+              <div class="form-group">
+                <label for="exp-empresa-rif">RIF</label>
+                <input type="text" id="exp-empresa-rif" data-field="empresaRif" placeholder="J-00000000-0">
+              </div>
+              <div class="form-group">
+                <label for="exp-empresa-dir">Dirección / Sede</label>
+                <input type="text" id="exp-empresa-dir" data-field="empresaDireccion" placeholder="Ciudad, Estado, Venezuela">
+              </div>
+              <div class="form-group full">
+                <label for="exp-notas">Notas u Observaciones del Expediente</label>
+                <textarea id="exp-notas" data-field="notasExpediente" rows="2" placeholder="Observaciones administrativas, acuerdos contractuales o constancias..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================
+           TAB 2: ESTRUCTURA JERÁRQUICA (A QUIÉN REPORTA Y PERSONAL A CARGO)
+           ================================================================ -->
+      <div id="tab-jerarquia" class="tab-panel hidden">
+        <div class="split-grid">
+          <div>
+            <!-- Personal a quien reporta -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Personal a Quien Reporta (Supervisor Inmediato)</h3>
+                  <p class="card-subtitle">Jefe directo o superior jerárquico del trabajador.</p>
+                </div>
+                <select id="select-supervisor-existing" style="max-width:220px;" title="Cargar desde otro expediente registrado">
+                  <option value="">-- Elegir de expedientes --</option>
+                </select>
+              </div>
+              <div class="card-body">
+                <div class="form-grid-2">
+                  <div class="form-group">
+                    <label for="sup-nombre">Nombre y Apellido del Supervisor</label>
+                    <input type="text" id="sup-nombre" placeholder="Ej. Dr. Alexander Hernández">
+                  </div>
+                  <div class="form-group">
+                    <label for="sup-cedula">Cédula</label>
+                    <input type="text" id="sup-cedula" placeholder="Ej. V-10.250.300">
+                  </div>
+                  <div class="form-group">
+                    <label for="sup-cargo">Cargo</label>
+                    <input type="text" id="sup-cargo" placeholder="Ej. Director General">
+                  </div>
+                  <div class="form-group">
+                    <label for="sup-depto">Departamento</label>
+                    <input type="text" id="sup-depto" placeholder="Ej. Dirección Ejecutiva">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Personal a su cargo -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Personal a su Cargo (Subordinados Directos)</h3>
+                  <p class="card-subtitle">Trabajadores bajo la supervisión directa de este expediente.</p>
+                </div>
+                <select id="select-sub-existing" style="max-width:220px;" title="Agregar desde expedientes existentes">
+                  <option value="">+ Agregar desde expedientes</option>
+                </select>
+              </div>
+              <div class="card-body">
+                <form id="form-add-subordinado" style="margin-bottom:16px;">
+                  <div class="form-grid-2">
+                    <div class="form-group">
+                      <label for="sub-nombre">Nombre y Apellido <span class="req">*</span></label>
+                      <input type="text" id="sub-nombre" placeholder="Ej. Carlos Mendoza" required>
+                    </div>
+                    <div class="form-group">
+                      <label for="sub-cedula">Cédula</label>
+                      <input type="text" id="sub-cedula" placeholder="Ej. V-22.415.908">
+                    </div>
+                    <div class="form-group">
+                      <label for="sub-cargo">Cargo</label>
+                      <input type="text" id="sub-cargo" placeholder="Ej. Analista de Nómina">
+                    </div>
+                    <div class="form-group">
+                      <label for="sub-depto">Departamento</label>
+                      <input type="text" id="sub-depto" placeholder="Ej. Administración">
+                    </div>
+                  </div>
+                  <div style="margin-top:12px;">
+                    <button type="submit" class="btn btn-primary btn-sm">+ Agregar Personal a Cargo</button>
+                  </div>
+                </form>
+
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Nombre y Apellido</th>
+                        <th>Cédula</th>
+                        <th>Cargo</th>
+                        <th>Departamento</th>
+                        <th style="width:70px;">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbody-subordinados"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Organigrama Visual -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Organigrama del Expediente</h3>
+                <p class="card-subtitle">Vista jerárquica en tiempo real.</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="org-tree" id="org-tree-preview"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================
+           TAB 3: SUELDOS DEVENGADOS, RECARGOS Y BENEFICIOS NO SALARIALES
+           ================================================================ -->
+      <div id="tab-sueldos" class="tab-panel hidden">
+        <!-- KPIs salariales -->
+        <div class="kpi-grid" id="kpi-salarios"></div>
+
+        <div class="split-grid">
+          <!-- Formulario Período Activo -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Remuneraciones del Período Activo</h3>
+                <p class="card-subtitle">Clasificación estricta entre conceptos salariales y no salariales (LOTTT y TSJ 2025).</p>
+              </div>
+              <button type="button" class="btn btn-emerald btn-sm" id="btn-save-salary-history">
+                + Guardar Período en Historial
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="sal-periodo">Período (Mes/Año)</label>
+                  <input type="month" id="sal-periodo" data-sal="periodo">
+                </div>
+                <div class="form-group">
+                  <label for="sal-base">Sueldo Base Mensual</label>
+                  <input type="number" id="sal-base" data-sal="sueldoBase" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="sal-comisiones">Comisiones Habituales</label>
+                  <input type="number" id="sal-comisiones" data-sal="comisionesHabituales" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="sal-primas">Primas Fijas <span class="hint">(antigüedad, profes.)</span></label>
+                  <input type="number" id="sal-primas" data-sal="primasFijas" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="sal-bonos">Bonos Regulares Permanentes</label>
+                  <input type="number" id="sal-bonos" data-sal="bonosRegulares" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="sal-viaticos">Viáticos Sin Rendición <span class="hint">Sent. 355 TSJ 2025</span></label>
+                  <input type="number" id="sal-viaticos" data-sal="viaticosSinRendicion" step="0.01" min="0">
+                </div>
+              </div>
+
+              <hr style="border:none;border-top:1px solid var(--border-color);margin:16px 0 12px;">
+              <div style="font-size:12px;font-weight:700;color:var(--navy-800);text-transform:uppercase;margin-bottom:10px;">
+                Horas Extras y Recargos (Art. 117, 118 y 120 LOTTT)
+              </div>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="sal-noc">Jornadas Nocturnas (Bono 30%)</label>
+                  <input type="number" id="sal-noc" data-sal="jornadasNocturnas" step="0.5" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="sal-hed">Horas Extras Diurnas (150%)</label>
+                  <input type="number" id="sal-hed" data-sal="horasExtrasDiurnas" step="0.5" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="sal-hen">Horas Extras Nocturnas (150% × 130%)</label>
+                  <input type="number" id="sal-hen" data-sal="horasExtrasNocturnas" step="0.5" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="sal-fer">Días Feriados / Descanso Trabajados (150%)</label>
+                  <input type="number" id="sal-fer" data-sal="diasFeriados" step="0.5" min="0">
+                </div>
+              </div>
+
+              <hr style="border:none;border-top:1px solid var(--border-color);margin:16px 0 12px;">
+              <div style="font-size:12px;font-weight:700;color:var(--emerald-700);text-transform:uppercase;margin-bottom:10px;">
+                Beneficios No Salariales — Exclusiones Clave (Art. 105 LOTTT y Sent. N° 99 TSJ 2025)
+              </div>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="sal-cesta">Alimentación / Cestaticket</label>
+                  <input type="number" id="sal-cesta" data-sal="cestaticket" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="sal-transp">Ayuda de Transporte <span class="hint">Sent. 99 TSJ 2025</span></label>
+                  <input type="number" id="sal-transp" data-sal="ayudaTransporte" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="sal-becas">Becas Educativas</label>
+                  <input type="number" id="sal-becas" data-sal="becasEducativas" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="sal-herr">Herramientas y Uniformes</label>
+                  <input type="number" id="sal-herr" data-sal="herramientasUniformes" step="0.01" min="0">
+                </div>
+                <div class="form-group full">
+                  <label for="sal-indem">Indemnizaciones (Accidentalidad, Maternidad, etc.)</label>
+                  <input type="number" id="sal-indem" data-sal="indemnizaciones" step="0.01" min="0">
+                </div>
+              </div>
+
+              <hr style="border:none;border-top:1px solid var(--border-color);margin:16px 0 12px;">
+              <div style="font-size:12px;font-weight:700;color:var(--rose-700);text-transform:uppercase;margin-bottom:10px;">
+                Deducciones Voluntarias del Período
+              </div>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="sal-prest">Préstamos</label>
+                  <input type="number" id="sal-prest" data-sal="prestamos" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="sal-pol">Pólizas / Seguros</label>
+                  <input type="number" id="sal-pol" data-sal="polizas" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="sal-ahorro">Caja de Ahorros</label>
+                  <input type="number" id="sal-ahorro" data-sal="ahorros" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                  <label for="sal-otras-ded">Otras Deducciones Voluntarias</label>
+                  <input type="number" id="sal-otras-ded" data-sal="otrasDeducciones" step="0.01" min="0">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla en Vivo de Fórmulas LOTTT -->
+          <div>
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Cálculo de Salario y Valores Unitarios (LOTTT)</h3>
+                  <p class="card-subtitle">Actualizado instantáneamente con cada cambio.</p>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Concepto</th>
+                        <th>Fórmula</th>
+                        <th>Base</th>
+                        <th class="num">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbody-salary-formulas"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="callout callout-emerald">
+              <div>
+                <strong>Jurisprudencia Reciente TSJ 2025:</strong><br>
+                • <strong>Sentencia N° 99 (31/03/2025):</strong> La ayuda de transporte para movilización hacia y desde el trabajo <em>no tiene carácter salarial</em>.<br>
+                • <strong>Sentencia N° 355 (13/08/2025):</strong> Los viáticos <em>no sujetos a rendición de cuentas</em> percibidos de forma regular y permanente <em>sí integran el salario normal</em>.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historial de Sueldos Devengados -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Historial de Sueldos Devengados del Expediente</h3>
+              <p class="card-subtitle">Almacena cada mes devengado para trazabilidad, auditoría y promedio de salario variable (Art. 121 LOTTT).</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Período</th>
+                    <th class="num">Sueldo Base</th>
+                    <th class="num">Salario Normal</th>
+                    <th class="num">Recargos / H.E.</th>
+                    <th class="num">No Salarial</th>
+                    <th class="num">Total Salarial</th>
+                    <th style="width:130px;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-sueldos-historial"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================
+           TAB 4: VACACIONES Y BONO VACACIONAL (ART. 190-196 Y 121 LOTTT)
+           ================================================================ -->
+      <div id="tab-vacaciones" class="tab-panel hidden">
+        <div class="kpi-grid" id="kpi-vacaciones"></div>
+
+        <div class="split-grid">
+          <!-- Cálculo Legal del Período Actual -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Cálculo de Vacaciones y Bono Vacacional (Período Actual)</h3>
+                <p class="card-subtitle">LOTTT Capítulo IX (Art. 190 al 196 y Art. 121).</p>
+              </div>
+              <select id="vac-tipo-salario" data-field="tipoSalarioVacaciones" style="max-width:230px;">
+                <option value="fijo">Salario Fijo (Mes anterior al disfrute)</option>
+                <option value="variable">Salario Variable (Promedio últimos 3 meses)</option>
+              </select>
+            </div>
+            <div class="card-body">
+              <div class="callout callout-info" id="vac-base-callout"></div>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Concepto</th>
+                      <th class="num">Días</th>
+                      <th class="num">Importe</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-vac-current"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Registrar Vacación en Historial -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Registrar Período Vacacional</h3>
+                <p class="card-subtitle">Control de vacaciones disfrutadas, pagadas, causadas y no disfrutadas.</p>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm" id="btn-autogenerar-vac">
+                Autogenerar por Antigüedad
+              </button>
+            </div>
+            <div class="card-body">
+              <form id="form-add-vacacion">
+                <div class="form-grid-2">
+                  <div class="form-group">
+                    <label for="vac-periodo-label">Período / Año de Servicio <span class="req">*</span></label>
+                    <input type="text" id="vac-periodo-label" placeholder="Ej. Año 1 (2024-2025)" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="vac-anio-num">N° Año de Servicio</label>
+                    <input type="number" id="vac-anio-num" min="1" max="40" value="1">
+                  </div>
+                  <div class="form-group">
+                    <label for="vac-estatus">Estatus Legal</label>
+                    <select id="vac-estatus">
+                      <option value="disfrutada">Disfrutada y Pagada</option>
+                      <option value="causada">Causada (Pendiente de Disfrute)</option>
+                      <option value="no_disfrutada">No Disfrutada (Pasivo Exigible)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="vac-dias-corr">Días Correspondientes (Base + Adic.)</label>
+                    <input type="number" id="vac-dias-corr" min="1" max="30" value="15">
+                  </div>
+                  <div class="form-group">
+                    <label for="vac-dias-disf">Días Disfrutados</label>
+                    <input type="number" id="vac-dias-disf" min="0" max="30" value="15">
+                  </div>
+                  <div class="form-group">
+                    <label for="vac-sal-diario">Salario Normal Diario Aplicado</label>
+                    <input type="number" id="vac-sal-diario" step="0.01" min="0" placeholder="Auto si se deja vacío">
+                  </div>
+                  <div class="form-group">
+                    <label for="vac-fecha-inicio">Fecha Inicio Disfrute</label>
+                    <input type="date" id="vac-fecha-inicio">
+                  </div>
+                  <div class="form-group">
+                    <label for="vac-fecha-fin">Fecha Fin Disfrute</label>
+                    <input type="date" id="vac-fecha-fin">
+                  </div>
+                  <div class="form-group">
+                    <label for="vac-fecha-pago">Fecha Pago Previo</label>
+                    <input type="date" id="vac-fecha-pago">
+                  </div>
+                  <div class="form-group">
+                    <label for="vac-obs">Observaciones</label>
+                    <input type="text" id="vac-obs" placeholder="Opcional...">
+                  </div>
+                </div>
+                <div style="margin-top:14px;">
+                  <button type="submit" class="btn btn-primary btn-sm">+ Registrar Período Vacacional</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de Vacaciones Pagadas y Disfrutadas -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Registro Histórico de Vacaciones Pagadas, Disfrutadas y Pendientes</h3>
+              <p class="card-subtitle">Las vacaciones son irrenunciables y no sustituibles por pago salvo al término de la relación laboral.</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Período</th>
+                    <th>Estatus</th>
+                    <th>Fechas Disfrute</th>
+                    <th>Fecha Pago</th>
+                    <th class="num">Días Corr. / Disfr.</th>
+                    <th class="num">Vacaciones</th>
+                    <th class="num">Bono Vac.</th>
+                    <th class="num">Total</th>
+                    <th style="width:120px;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-vac-historial"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================
+           TAB 5: UTILIDADES Y DEDUCCIONES / APORTES PARAFISCALES
+           ================================================================ -->
+      <div id="tab-utilidades" class="tab-panel hidden">
+        <!-- Utilidades -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Cálculo de Utilidades / Participación en los Beneficios (Art. 131–140 LOTTT)</h3>
+              <p class="card-subtitle">Mínimo obligatorio 30 días, máximo legal 4 meses (120 días) o 15% de beneficios líquidos (ISLR).</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="split-grid">
+              <div>
+                <div class="form-grid-2">
+                  <div class="form-group">
+                    <label for="util-modo">Método de Cálculo</label>
+                    <select id="util-modo" data-util="modo">
+                      <option value="dias">Por Días Legales / Convenidos (30 a 120 días)</option>
+                      <option value="beneficios_liquidos">15% Beneficios Líquidos ISLR (Art. 131, 133, 136)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="util-dias">Días Pactados / Convenidos (30 a 120)</label>
+                    <input type="number" id="util-dias" data-util="diasConvenidos" min="30" max="120" step="1">
+                  </div>
+                  <div class="form-group">
+                    <label for="util-meses">Meses Completos Laborados en el Año (1–12)</label>
+                    <input type="number" id="util-meses" data-util="mesesLaborados" min="1" max="12" step="1">
+                  </div>
+                  <div class="form-group">
+                    <label for="util-anticipo">Anticipo / Bonificación Diciembre (Art. 132)</label>
+                    <input type="number" id="util-anticipo" data-util="anticipoDiciembre" step="0.01" min="0">
+                  </div>
+                </div>
+
+                <div id="util-islr-fields" class="form-grid-3" style="margin-top:14px;padding:14px;background:var(--bg-subtle);border:1px solid var(--border-color);border-radius:8px;">
+                  <div class="form-group">
+                    <label for="util-liquida">Utilidad Líquida Empresa (ISLR)</label>
+                    <input type="number" id="util-liquida" data-util="utilidadLiquidaEmpresa" step="0.01" min="0">
+                  </div>
+                  <div class="form-group">
+                    <label for="util-total-sal">Total Salarios Nómina Anual Empresa</label>
+                    <input type="number" id="util-total-sal" data-util="totalSalariosEmpresa" step="0.01" min="0" placeholder="Auto si es 1 trabajador">
+                  </div>
+                  <div class="form-group">
+                    <label for="util-sal-trab">Salario Anual del Trabajador</label>
+                    <input type="number" id="util-sal-trab" data-util="salarioAnualTrabajador" step="0.01" min="0" placeholder="Auto: mensual × meses">
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div class="callout callout-emerald" id="util-criterio-callout"></div>
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Concepto de Utilidades</th>
+                        <th class="num">Monto</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbody-utilidades"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Deducciones y Aportes Parafiscales -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Deducciones Legales y Aportes Patronales (IVSS, FAOV, INCES)</h3>
+              <p class="card-subtitle">Ley del Seguro Social Art. 67 · LRPE Art. 46 · LRPVH Art. 33 · Ley INCES Art. 49 y 50.</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="form-grid-3" style="margin-bottom:16px;">
+              <div class="form-group">
+                <label for="para-mes">Mes de Liquidación (Cuenta Lunes Auto)</label>
+                <input type="month" id="para-mes" data-para="periodoMes">
+              </div>
+              <div class="form-group">
+                <label for="para-lunes-manual">N° de Lunes del Mes <span class="hint" id="para-lunes-auto-hint"></span></label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <label class="checkbox-row" style="padding:7px 10px;white-space:nowrap;">
+                    <input type="checkbox" id="para-usar-lunes-manual" data-para="usarLunesManual"> Manual
+                  </label>
+                  <input type="number" id="para-lunes-manual" data-para="lunesManual" min="4" max="5" step="1">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="para-faov-modo">Base de Cálculo FAOV (3%: 1% Emp. / 2% Pat.)</label>
+                <select id="para-faov-modo" data-para="faovBaseModo">
+                  <option value="integral">Salario Integral Mensual (Art. 33 LRPVH)</option>
+                  <option value="normal">Salario Normal Mensual (Caso Estudio Simplificado)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-grid-2" style="margin-bottom:16px;">
+              <div style="padding:12px;background:var(--bg-subtle);border:1px solid var(--border-color);border-radius:8px;">
+                <label class="checkbox-row" style="border:none;padding:0;background:transparent;margin-bottom:8px;">
+                  <input type="checkbox" id="para-tope-ivss" data-para="aplicarTopeIvss">
+                  <strong>Aplicar tope salarial IVSS (opcional, ej. 5 salarios mínimos)</strong>
+                </label>
+                <input type="number" id="para-tope-monto" data-para="topeIvssMonto" step="0.01" min="0" placeholder="Monto tope IVSS (0 = sin tope)">
+              </div>
+
+              <div style="padding:12px;background:var(--bg-subtle);border:1px solid var(--border-color);border-radius:8px;">
+                <label class="checkbox-row" style="border:none;padding:0;background:transparent;margin-bottom:8px;">
+                  <input type="checkbox" id="para-inces-custom" data-para="incesUsarPersonalizado">
+                  <strong>Personalizar remuneraciones trimestrales INCES Patronal (2%, Art. 49)</strong>
+                </label>
+                <div class="form-grid-2" style="gap:8px;">
+                  <input type="number" id="para-inces-sueldos" data-para="incesSueldosTrimestre" step="0.01" min="0" placeholder="Sueldos trimestre">
+                  <input type="number" id="para-inces-vac" data-para="incesVacacionesTrimestre" step="0.01" min="0" placeholder="Vacaciones / Bonos trim.">
+                </div>
+              </div>
+            </div>
+
+            <div class="kpi-grid" id="kpi-parafiscales"></div>
+
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Organismo / Concepto</th>
+                    <th>Fórmula y Plazo de Pago</th>
+                    <th class="num">Retención Trabajador</th>
+                    <th class="num">Aporte Patronal</th>
+                    <th class="num">Total Aporte</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-parafiscales"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================
+           TAB 6: RESUMEN Y RECIBOS LISTOS PARA IMPRIMIR
+           ================================================================ -->
+      <div id="tab-print" class="tab-panel hidden">
+        <div class="print-toolbar no-print">
+          <div class="print-toolbar-top">
+            <div>
+              <strong style="font-size:14.5px;color:var(--navy-900);">Selecciona el tipo de documento a generar e imprimir</strong>
+              <div style="font-size:12px;color:var(--text-muted);">Cada formato aplica los artículos correspondientes de la LOTTT, IVSS, FAOV e INCES.</div>
+            </div>
+            <button type="button" class="btn btn-emerald" id="btn-print-now">
+              🖨️ Imprimir / Guardar en PDF
+            </button>
+          </div>
+
+          <!-- Caja de Archivado en PDF por Empresa -->
+          <div class="company-archive-box">
+            <div class="archive-box-left">
+              <div class="archive-icon">📁</div>
+              <div>
+                <div class="archive-title">Carpeta de Archivo: <strong id="print-company-name">EMPRESA, C.A.</strong></div>
+                <div class="archive-sub">Nombre sugerido para el PDF: <code id="print-filename-hint">EMPRESA - Resumen - V14820415_Edith_Sabariego.pdf</code></div>
+              </div>
+            </div>
+            <div class="archive-box-actions">
+              <button type="button" class="btn btn-emerald btn-sm" id="btn-archive-pdf">
+                🖨️ Guardar PDF
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="btn-download-html-archive" title="Descargar copia digital completa auto-imprimible para archivar en la carpeta de la empresa">
+                💾 Copia Digital (.html)
+              </button>
+            </div>
+          </div>
+
+          <!-- Selector de Tipo de Documento -->
+          <div class="doc-type-grid" id="doc-type-selector">
+            <button type="button" class="doc-type-btn active" data-doc-type="resumen_integral">
+              <strong>Resumen Integral</strong>
+              <span>Expediente completo</span>
+            </button>
+            <button type="button" class="doc-type-btn" data-doc-type="recibo_mensual">
+              <strong>Recibo Mensual</strong>
+              <span>30 días · Art. 106</span>
+            </button>
+            <button type="button" class="doc-type-btn" data-doc-type="recibo_quincenal">
+              <strong>Recibo Quincenal</strong>
+              <span>15 días · 1.ª / 2.ª Qna</span>
+            </button>
+            <button type="button" class="doc-type-btn" data-doc-type="recibo_semanal">
+              <strong>Recibo Semanal</strong>
+              <span>7 días · 1 lunes IVSS</span>
+            </button>
+            <button type="button" class="doc-type-btn" data-doc-type="recibo_vacaciones">
+              <strong>Recibo Vacaciones</strong>
+              <span>Disfrute + Bono Vac.</span>
+            </button>
+            <button type="button" class="doc-type-btn" data-doc-type="liquidacion_parcial">
+              <strong>Liquidación Parcial</strong>
+              <span>Anticipo 75% · Art. 144</span>
+            </button>
+            <button type="button" class="doc-type-btn" data-doc-type="liquidacion_definitiva">
+              <strong>Liquidación Definitiva</strong>
+              <span>Finiquito · Art. 142/92</span>
+            </button>
+          </div>
+
+          <!-- Panel Contextual 1: Opciones del Resumen Integral -->
+          <div class="print-config-box" id="cfg-resumen-integral">
+            <div class="print-options">
+              <strong style="font-size:12px;color:var(--navy-900);">Secciones a incluir:</strong>
+              <label class="checkbox-row" style="padding:5px 10px;font-size:12px;">
+                <input type="checkbox" id="opt-print-jerarquia" checked> Jerarquía
+              </label>
+              <label class="checkbox-row" style="padding:5px 10px;font-size:12px;">
+                <input type="checkbox" id="opt-print-historial" checked> Historial Sueldos
+              </label>
+              <label class="checkbox-row" style="padding:5px 10px;font-size:12px;">
+                <input type="checkbox" id="opt-print-vacaciones" checked> Vacaciones
+              </label>
+              <label class="checkbox-row" style="padding:5px 10px;font-size:12px;">
+                <input type="checkbox" id="opt-print-utilidades" checked> Utilidades
+              </label>
+              <label class="checkbox-row" style="padding:5px 10px;font-size:12px;">
+                <input type="checkbox" id="opt-print-parafiscales" checked> Deducciones
+              </label>
+              <label class="checkbox-row" style="padding:5px 10px;font-size:12px;">
+                <input type="checkbox" id="opt-print-patronal" checked> Aportes Patronales
+              </label>
+            </div>
+          </div>
+
+          <!-- Panel Contextual 2: Opciones de Recibos Periódicos (Mensual / Quincenal / Semanal) -->
+          <div class="print-config-box hidden" id="cfg-recibo-periodico">
+            <div class="form-grid">
+              <div class="form-group hidden" id="grp-quincena-num">
+                <label for="rec-quincena-num">Quincena del Mes</label>
+                <select id="rec-quincena-num">
+                  <option value="1">1.ª Quincena (01 al 15)</option>
+                  <option value="2">2.ª Quincena (16 al fin de mes)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="rec-fecha-desde">Período Desde</label>
+                <input type="date" id="rec-fecha-desde">
+              </div>
+              <div class="form-group">
+                <label for="rec-fecha-hasta">Período Hasta</label>
+                <input type="date" id="rec-fecha-hasta">
+              </div>
+              <div class="form-group">
+                <label for="rec-lunes">Lunes IVSS en este Recibo</label>
+                <input type="number" id="rec-lunes" min="0" max="5" step="1">
+              </div>
+              <div class="form-group">
+                <label for="rec-forma-pago">Forma de Pago</label>
+                <input type="text" id="rec-forma-pago" value="Transferencia / Depósito Bancario">
+              </div>
+            </div>
+            <div class="print-options" style="margin-top:10px;">
+              <label class="checkbox-row" style="padding:5px 10px;font-size:12px;">
+                <input type="checkbox" id="rec-incluir-nosal" checked> Incluir beneficios no salariales (Cestaticket/Transporte)
+              </label>
+              <label class="checkbox-row" style="padding:5px 10px;font-size:12px;">
+                <input type="checkbox" id="rec-prorratear-recargos"> Prorratear horas extras/recargos al período
+              </label>
+              <label class="checkbox-row" style="padding:5px 10px;font-size:12px;">
+                <input type="checkbox" id="rec-mostrar-patronal"> Incluir cuadro de aportes patronales
+              </label>
+            </div>
+          </div>
+
+          <!-- Panel Contextual 3: Opciones de Recibo de Vacaciones -->
+          <div class="print-config-box hidden" id="cfg-recibo-vacaciones">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="rvac-periodo-select">Período Vacacional a Imprimir</label>
+                <select id="rvac-periodo-select">
+                  <option value="actual">Período Actual por Antigüedad</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="rvac-fecha-salida">Fecha de Salida</label>
+                <input type="date" id="rvac-fecha-salida">
+              </div>
+              <div class="form-group">
+                <label for="rvac-fecha-reinc">Fecha de Reincorporación</label>
+                <input type="date" id="rvac-fecha-reinc">
+              </div>
+              <div class="form-group">
+                <label for="rvac-fecha-pago">Fecha de Pago Previo</label>
+                <input type="date" id="rvac-fecha-pago">
+              </div>
+              <div class="form-group">
+                <label for="rvac-otras-ded">Otras Deducciones</label>
+                <input type="number" id="rvac-otras-ded" step="0.01" min="0" value="0">
+              </div>
+              <div class="form-group">
+                <label for="rvac-obs">Observaciones</label>
+                <input type="text" id="rvac-obs" placeholder="Opcional...">
+              </div>
+            </div>
+            <div class="print-options" style="margin-top:10px;">
+              <label class="checkbox-row" style="padding:5px 10px;font-size:12px;">
+                <input type="checkbox" id="rvac-aplicar-faov"> Aplicar retención FAOV (1%) en este recibo
+              </label>
+            </div>
+          </div>
+
+          <!-- Panel Contextual 4: Opciones de Liquidación Parcial (Art. 144) -->
+          <div class="print-config-box hidden" id="cfg-liq-parcial">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="lpar-fecha-corte">Fecha de Corte</label>
+                <input type="date" id="lpar-fecha-corte">
+              </div>
+              <div class="form-group">
+                <label for="lpar-motivo">Motivo Legal (Art. 144 LOTTT)</label>
+                <select id="lpar-motivo">
+                  <option value="vivienda">Vivienda (construcción, compra, mejora)</option>
+                  <option value="hipoteca">Liberación de hipoteca o gravamen</option>
+                  <option value="educacion">Educación del trabajador o familia</option>
+                  <option value="salud">Atención médica y hospitalaria</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="lpar-porcentaje">% de Anticipo (Máx. 75% Art. 144)</label>
+                <input type="number" id="lpar-porcentaje" min="1" max="75" step="1" value="75">
+              </div>
+              <div class="form-group">
+                <label for="lpar-monto-manual">O Monto Específico (0 = usar %)</label>
+                <input type="number" id="lpar-monto-manual" min="0" step="0.01" value="0">
+              </div>
+              <div class="form-group">
+                <label for="lpar-anticipos-prev">Anticipos Previos Recibidos</label>
+                <input type="number" id="lpar-anticipos-prev" min="0" step="0.01" value="0">
+              </div>
+              <div class="form-group">
+                <label for="lpar-intereses">Intereses Prestaciones (Art. 143)</label>
+                <input type="number" id="lpar-intereses" min="0" step="0.01" value="0">
+              </div>
+            </div>
+            <div class="print-options" style="margin-top:10px;">
+              <label class="checkbox-row" style="padding:5px 10px;font-size:12px;">
+                <input type="checkbox" id="lpar-incluir-vac"> Incluir vacaciones vencidas / fraccionadas en este pago parcial
+              </label>
+            </div>
+          </div>
+
+          <!-- Panel Contextual 5: Opciones de Liquidación Definitiva (Art. 142 / 92) -->
+          <div class="print-config-box hidden" id="cfg-liq-definitiva">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="ldef-fecha-egreso">Fecha de Egreso / Terminación</label>
+                <input type="date" id="ldef-fecha-egreso">
+              </div>
+              <div class="form-group">
+                <label for="ldef-motivo">Causa de Terminación</label>
+                <select id="ldef-motivo">
+                  <option value="renuncia">Renuncia Voluntaria</option>
+                  <option value="mutuo_acuerdo">Mutuo Acuerdo</option>
+                  <option value="fin_contrato">Culminación de Contrato</option>
+                  <option value="despido_justificado">Despido Justificado (Art. 79)</option>
+                  <option value="despido_injustificado">Despido Injustificado / Retiro Justificado (Indemnización Art. 92)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="ldef-anticipos">Anticipos de Prestaciones Previos</label>
+                <input type="number" id="ldef-anticipos" min="0" step="0.01" value="0">
+              </div>
+              <div class="form-group">
+                <label for="ldef-intereses">Intereses sobre Prestaciones (Art. 143)</label>
+                <input type="number" id="ldef-intereses" min="0" step="0.01" value="0">
+              </div>
+              <div class="form-group">
+                <label for="ldef-dias-sal">Días de Salario Pendientes</label>
+                <input type="number" id="ldef-dias-sal" min="0" max="30" step="0.5" value="0">
+              </div>
+              <div class="form-group">
+                <label for="ldef-deducciones">Otras Deducciones Finales</label>
+                <input type="number" id="ldef-deducciones" min="0" step="0.01" value="0">
+              </div>
+            </div>
+            <div class="print-options" style="margin-top:10px;">
+              <label class="checkbox-row" style="padding:5px 10px;font-size:12px;">
+                <input type="checkbox" id="ldef-incluir-vac" checked> Incluir vacaciones vencidas y fraccionadas (Art. 195-196)
+              </label>
+              <label class="checkbox-row" style="padding:5px 10px;font-size:12px;">
+                <input type="checkbox" id="ldef-incluir-util" checked> Incluir utilidades fraccionadas / pendientes (Art. 131)
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+        <article class="print-sheet" id="print-sheet-container"></article>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Modal Gestión de Carpetas por Empresa -->
+  <div class="modal-backdrop hidden no-print" id="modal-empresas">
+    <div class="modal-box" style="max-width:780px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="margin:0;font-size:16px;">📁 Carpetas por Empresa / Entidades de Trabajo</h3>
+          <small style="color:#cbd5e1;">Crea carpetas por empresa para clasificar tus trabajadores y archivar sus expedientes en PDF.</small>
+        </div>
+        <button type="button" class="btn btn-ghost-light btn-sm" id="btn-close-empresas">Cerrar ✕</button>
+      </div>
+      <div class="modal-body" style="font-size:13px;line-height:1.6;">
+        <!-- Formulario Crear/Editar Empresa -->
+        <div class="card" style="margin-bottom:16px;background:var(--bg-subtle);">
+          <div class="card-header" style="padding:10px 14px;">
+            <strong style="font-size:13px;color:var(--navy-900);" id="empresa-form-title">+ Registrar Nueva Carpeta de Empresa</strong>
+          </div>
+          <div class="card-body" style="padding:14px;">
+            <form id="form-manage-empresa" autocomplete="off">
+              <input type="hidden" id="emp-edit-id">
+              <div class="form-grid-3">
+                <div class="form-group full">
+                  <label for="emp-nombre">Razón Social / Nombre de la Carpeta <span class="req">*</span></label>
+                  <input type="text" id="emp-nombre" placeholder="Ej. INVERSIONES Y SERVICIOS ABC, C.A." required>
+                </div>
+                <div class="form-group">
+                  <label for="emp-rif">Número de RIF <span class="req">*</span></label>
+                  <input type="text" id="emp-rif" placeholder="Ej. J-12345678-9" required>
+                </div>
+                <div class="form-group">
+                  <label for="emp-dir">Dirección Fiscal / Sede</label>
+                  <input type="text" id="emp-dir" placeholder="Ciudad, Estado, Venezuela">
+                </div>
+                <div class="form-group" style="display:flex;align-items:flex-end;">
+                  <button type="submit" class="btn btn-emerald" style="width:100%;height:38px;" id="btn-save-empresa">
+                    Guardar Carpeta
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Directorio de Empresas Registradas -->
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;margin-bottom:8px;">
+            Carpetas de Empresas Disponibles
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="data-table" style="width:100%;">
+              <thead>
+                <tr>
+                  <th>Empresa / Carpeta</th>
+                  <th>RIF</th>
+                  <th>Sede</th>
+                  <th style="text-align:center;">Expedientes</th>
+                  <th style="text-align:right;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-empresas-list"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Guía Legal LOTTT -->
+  <div class="modal-backdrop hidden no-print" id="modal-legal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <h3 style="margin:0;font-size:16px;">Marco Legal y Fórmulas Aplicadas en NOMINA</h3>
+          <small style="color:#cbd5e1;">Basado en LOTTT, LSS, LRPE, LRPVH (BANAVIH), Ley INCES y Jurisprudencia TSJ 2025</small>
+        </div>
+        <button type="button" class="btn btn-ghost-light btn-sm" id="btn-close-legal">Cerrar ✕</button>
+      </div>
+      <div class="modal-body" style="font-size:13px;line-height:1.6;">
+        <h4 style="margin-top:0;color:var(--navy-900);">1. Salario y Recargos (LOTTT)</h4>
+        <ul>
+          <li><strong>Salario Normal (Art. 104 y 113):</strong> Remuneración devengada de forma regular y permanente (sueldo base, comisiones habituales, primas fijas, bonos regulares y viáticos sin rendición de cuentas — <em>Sentencia N° 355 TSJ, 13/08/2025</em>).</li>
+          <li><strong>Beneficios No Salariales (Art. 105):</strong> Cestaticket, ayuda de transporte para traslado (<em>Sentencia N° 99 TSJ, 31/03/2025</em>), herramientas/uniformes, becas educativas e indemnizaciones.</li>
+          <li><strong>Fórmulas:</strong> Diario = Normal / 30 · Semanal = Diario × 7 · Bono Nocturno = Diario × 30% (Art. 117) · Hora Extra Diurna = (Diario / 8) × 150% (Art. 118) · Hora Extra Nocturna = ((Diario / 8) × 150%) × 130% (Art. 117) · Día Feriado/Descanso = Diario × 150% (Art. 120).</li>
+        </ul>
+
+        <h4 style="color:var(--navy-900);">2. Vacaciones y Bono Vacacional (Art. 121 y 190–196 LOTTT)</h4>
+        <ul>
+          <li><strong>Disfrute (Art. 190):</strong> 15 días hábiles al cumplir 1 año + 1 día adicional por cada año consecutivo (máx. 30 días). Irrenunciables y no sustituibles por pago salvo al finalizar la relación laboral.</li>
+          <li><strong>Bono Vacacional (Art. 192):</strong> 15 días de salario normal + 1 día adicional por año de servicio (máx. 30 días).</li>
+          <li><strong>Base de Cálculo (Art. 121):</strong> Salario normal del mes efectivo anterior al disfrute (o promedio de los 3 meses anteriores si es salario variable).</li>
+        </ul>
+
+        <h4 style="color:var(--navy-900);">3. Utilidades (Art. 131–140 LOTTT)</h4>
+        <ul>
+          <li><strong>Distribución:</strong> Mínimo 15% de los beneficios líquidos declarados en ISLR (Art. 131 y 133), sin imputación de pérdidas previas (Art. 135).</li>
+          <li><strong>Límites:</strong> Piso mínimo obligatorio 30 días de salario (y bonificación de fin de año en los primeros 15 días de diciembre, Art. 132; entidades sin fines de lucro, Art. 140) y máximo legal de 4 meses / 120 días. Si se pactan mayores, prevalecen las convenidas (Art. 139).</li>
+          <li><strong>Pago de diferencia (Art. 137):</strong> Dentro de los 2 meses siguientes al cierre del ejercicio.</li>
+        </ul>
+
+        <h4 style="color:var(--navy-900);">4. Deducciones y Aportes Parafiscales</h4>
+        <ul>
+          <li><strong>IVSS (Art. 67 LSS &amp; Art. 46 LRPE):</strong> S.S.O. = (Sueldo × 12 / 52) × % × N° lunes del mes. Riesgo Mínimo (Pat. 9%+2% / Emp. 4%+0,5%), Medio (Pat. 10%+2%), Máximo (Pat. 11%+2%). Pago: primeros 5 días hábiles del mes.</li>
+          <li><strong>FAOV / BANAVIH (Art. 33 LRPVH):</strong> 3% del salario integral (1% retención trabajador, 2% aporte empresa). Pago: primeros 5 días hábiles del mes.</li>
+          <li><strong>INCES (Art. 49 y 50, entidades ≥5 trabajadores):</strong> 2% aporte patronal trimestral sobre remuneraciones (pago: 5 días al cierre del trimestre) y 0,5% retención empleado sobre utilidades (enterar dentro de los 10 días siguientes al pago; la empresa no realiza aporte patronal INCES sobre utilidades).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor de Notificaciones Toast -->
+  <div class="toast-container no-print" id="toast-container"></div>
+
+  <!-- Scripts de la aplicación -->
+  <script src="js/calculations.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/print-renderer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
