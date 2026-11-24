@@ -2555,6 +2555,21 @@
   }
 
   /* ========================================================================
+     EXPORTACIÓN GLOBAL DE CONTROLADORES DE MODAL (ACCESO DIRECTO / ONCLICK)
+     ======================================================================== */
+  window.NominaApp = {
+    openBulkModal,
+    closeBulkModal,
+    openBackupModal,
+    closeBackupModal,
+    handleDownloadBulkTemplate,
+    handleSaveMasterBackupToPC,
+    handleDownloadBackupJSON,
+    handleDownloadBackupExcel,
+    handleExecuteRestoreBackup
+  };
+
+  /* ========================================================================
      INICIALIZACIÓN
      ======================================================================== */
   document.addEventListener('DOMContentLoaded', () => {

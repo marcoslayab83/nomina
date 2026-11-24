@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NOMINA — Sistema Integral de Cálculo de Beneficios y Expediente Laboral (LOTTT)</title>
-  <link rel="stylesheet" href="css/styles.css?v=2.5">
+  <link rel="stylesheet" href="css/styles.css?v=3.0">
 </head>
 <body>
 
@@ -55,11 +55,11 @@
         📁 Carpetas (<span id="top-companies-count">1</span>)
       </button>
 
-      <button type="button" class="btn btn-ghost-light" id="btn-topbar-bulk" title="Carga masiva de trabajadores desde plantilla Excel o CSV">
+      <button type="button" class="btn btn-ghost-light" id="btn-topbar-bulk" onclick="window.NominaApp ? window.NominaApp.openBulkModal() : (document.getElementById('modal-bulk-import') && document.getElementById('modal-bulk-import').classList.remove('hidden'))" title="Carga masiva de trabajadores desde plantilla Excel o CSV">
         📊 Carga Masiva
       </button>
 
-      <button type="button" class="btn btn-ghost-light" id="btn-topbar-backup" title="Respaldo maestro en PC y restauración de base de datos" style="color:#6ee7b7;border-color:rgba(110,231,183,0.35);">
+      <button type="button" class="btn btn-ghost-light" id="btn-topbar-backup" onclick="window.NominaApp ? window.NominaApp.openBackupModal() : (document.getElementById('modal-backup') && document.getElementById('modal-backup').classList.remove('hidden'))" title="Respaldo maestro en PC y restauración de base de datos" style="color:#6ee7b7;border-color:rgba(110,231,183,0.35);">
         💾 Respaldo
       </button>
 
@@ -198,13 +198,13 @@
                 <p class="card-subtitle">Organizados por carpeta de empresa y almacenados localmente.</p>
               </div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <button type="button" class="btn btn-outline btn-sm" id="btn-landing-dl-template" title="Descargar plantilla oficial Excel para carga masiva de trabajadores">
+                <button type="button" class="btn btn-outline btn-sm" id="btn-landing-dl-template" onclick="window.NominaApp ? window.NominaApp.handleDownloadBulkTemplate() : (window.NominaBulk && window.NominaBulk.downloadExcelTemplate())" title="Descargar plantilla oficial Excel para carga masiva de trabajadores">
                   📥 Plantilla Excel
                 </button>
-                <button type="button" class="btn btn-emerald btn-sm" id="btn-landing-bulk-import" title="Cargar masivamente trabajadores desde un archivo Excel o CSV">
+                <button type="button" class="btn btn-emerald btn-sm" id="btn-landing-bulk-import" onclick="window.NominaApp ? window.NominaApp.openBulkModal() : (document.getElementById('modal-bulk-import') && document.getElementById('modal-bulk-import').classList.remove('hidden'))" title="Cargar masivamente trabajadores desde un archivo Excel o CSV">
                   📊 Carga Masiva
                 </button>
-                <button type="button" class="btn btn-outline btn-sm" id="btn-landing-backup" title="Gestionar respaldos y recuperación">
+                <button type="button" class="btn btn-outline btn-sm" id="btn-landing-backup" onclick="window.NominaApp ? window.NominaApp.openBackupModal() : (document.getElementById('modal-backup') && document.getElementById('modal-backup').classList.remove('hidden'))" title="Gestionar respaldos y recuperación">
                   💾 Respaldo
                 </button>
                 <button type="button" class="btn btn-ghost btn-sm" id="btn-load-samples" title="Cargar los casos de estudio oficiales LOTTT">
@@ -1526,7 +1526,7 @@
           <h3 style="margin:0;font-size:16px;">📊 Carga Masiva de Trabajadores (Excel / CSV)</h3>
           <small style="color:#cbd5e1;">Importa nóminas completas con validación legal LOTTT y creación automática de carpetas.</small>
         </div>
-        <button type="button" class="btn btn-ghost-light btn-sm" id="btn-close-bulk-modal">Cerrar ✕</button>
+        <button type="button" class="btn btn-ghost-light btn-sm" id="btn-close-bulk-modal" onclick="document.getElementById('modal-bulk-import').classList.add('hidden')">Cerrar ✕</button>
       </div>
       <div class="modal-body" style="font-size:13px;line-height:1.6;">
         <!-- Paso 1: Descargar Plantilla Oficial -->
@@ -1538,7 +1538,7 @@
                 Incluye formato para Microsoft Excel, Google Sheets y Calc con validaciones de Sueldo, Fechas y Moneda (Bs., USD, EUR).
               </span>
             </div>
-            <button type="button" class="btn btn-emerald btn-sm" id="btn-modal-dl-template" style="white-space:nowrap;">
+            <button type="button" class="btn btn-emerald btn-sm" id="btn-modal-dl-template" onclick="window.NominaApp ? window.NominaApp.handleDownloadBulkTemplate() : (window.NominaBulk && window.NominaBulk.downloadExcelTemplate())" style="white-space:nowrap;">
               📥 Descargar Plantilla Excel (.xlsx)
             </button>
           </div>
@@ -1550,7 +1550,7 @@
           <strong style="color:var(--navy-900);font-size:14px;display:block;margin-bottom:4px;">Paso 2: Selecciona o arrastra el archivo de trabajadores</strong>
           <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;">Formatos soportados: <strong>.xlsx, .xls, .csv</strong></p>
           <input type="file" id="input-bulk-file" accept=".xlsx, .xls, .csv" style="display:none;">
-          <button type="button" class="btn btn-outline" id="btn-select-bulk-file" style="padding:6px 16px;">
+          <button type="button" class="btn btn-outline" id="btn-select-bulk-file" onclick="document.getElementById('input-bulk-file').click()" style="padding:6px 16px;">
             Examinar Archivo...
           </button>
           <div id="bulk-file-info" style="margin-top:10px;font-size:12.5px;font-weight:600;color:var(--emerald-700);display:none;">
@@ -1586,7 +1586,7 @@
         </div>
 
         <div style="display:flex;justify-content:flex-end;gap:10px;">
-          <button type="button" class="btn btn-outline" id="btn-cancel-bulk-modal">Cancelar</button>
+          <button type="button" class="btn btn-outline" id="btn-cancel-bulk-modal" onclick="document.getElementById('modal-bulk-import').classList.add('hidden')">Cancelar</button>
           <button type="button" class="btn btn-emerald" id="btn-process-bulk-import" disabled style="padding:8px 20px;">
             🚀 Procesar e Importar Trabajadores
           </button>
@@ -1603,7 +1603,7 @@
           <h3 style="margin:0;font-size:16px;">💾 Respaldo Maestro y Recuperación de Base de Datos</h3>
           <small style="color:#cbd5e1;">Exporta tu base de datos completa a tu PC y recupérala con un solo clic si alguna vez se borra.</small>
         </div>
-        <button type="button" class="btn btn-ghost-light btn-sm" id="btn-close-backup-modal">Cerrar ✕</button>
+        <button type="button" class="btn btn-ghost-light btn-sm" id="btn-close-backup-modal" onclick="document.getElementById('modal-backup').classList.add('hidden')">Cerrar ✕</button>
       </div>
       <div class="modal-body" style="font-size:13px;line-height:1.6;">
 
@@ -1614,26 +1614,26 @@
             Guarda en un solo paso todos los expedientes, historial de sueldos, carpetas de empresas y tasas de cambio oficiales directamente en tu carpeta de PC y descarga copias de seguridad.
           </p>
 
-          <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:8px 12px;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:8px 12px;margin-bottom:12px;flex-wrap:gap:8px;">
             <div style="font-size:12px;color:#334155;">
               📁 Carpeta vinculada en PC: <strong id="backup-pc-folder-label" style="color:#047857;">Verificando...</strong>
             </div>
-            <button type="button" class="btn btn-outline btn-xs" id="btn-backup-select-pc">
+            <button type="button" class="btn btn-outline btn-xs" id="btn-backup-select-pc" onclick="window.NominaApp && window.NominaApp.openBackupModal()">
               📂 Seleccionar / Cambiar Carpeta
             </button>
           </div>
 
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button type="button" class="btn btn-emerald" id="btn-save-master-backup-pc" style="flex:1;min-width:260px;padding:10px 16px;">
+            <button type="button" class="btn btn-emerald" id="btn-save-master-backup-pc" onclick="window.NominaApp && window.NominaApp.handleSaveMasterBackupToPC()" style="flex:1;min-width:260px;padding:10px 16px;">
               💾 Guardar Respaldo Maestro en PC (JSON + Excel)
             </button>
           </div>
 
           <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
-            <button type="button" class="btn btn-outline btn-sm" id="btn-download-master-backup-json" style="flex:1;">
+            <button type="button" class="btn btn-outline btn-sm" id="btn-download-master-backup-json" onclick="window.NominaApp && window.NominaApp.handleDownloadBackupJSON()" style="flex:1;">
               ⬇️ Descargar Copia JSON
             </button>
-            <button type="button" class="btn btn-outline btn-sm" id="btn-download-master-backup-excel" style="flex:1;">
+            <button type="button" class="btn btn-outline btn-sm" id="btn-download-master-backup-excel" onclick="window.NominaApp && window.NominaApp.handleDownloadBackupExcel()" style="flex:1;">
               📊 Descargar Libro Consolidado Excel (.xlsx)
             </button>
           </div>
@@ -1654,14 +1654,14 @@
           </div>
 
           <div style="display:flex;justify-content:flex-end;">
-            <button type="button" class="btn btn-warning" id="btn-execute-restore-backup" disabled style="padding:8px 18px;background:#d97706;color:#fff;border:none;">
+            <button type="button" class="btn btn-warning" id="btn-execute-restore-backup" onclick="window.NominaApp && window.NominaApp.handleExecuteRestoreBackup()" disabled style="padding:8px 18px;background:#d97706;color:#fff;border:none;">
               ⚠️ Restaurar Base de Datos Ahora
             </button>
           </div>
         </div>
 
         <div style="display:flex;justify-content:flex-end;">
-          <button type="button" class="btn btn-outline" id="btn-close-backup-modal-bottom">Cerrar</button>
+          <button type="button" class="btn btn-outline" id="btn-close-backup-modal-bottom" onclick="document.getElementById('modal-backup').classList.add('hidden')">Cerrar</button>
         </div>
       </div>
     </div>
@@ -1671,13 +1671,13 @@
   <div class="toast-container no-print" id="toast-container"></div>
 
   <!-- Scripts de la aplicación -->
-  <script src="js/vendor/xlsx.full.min.js"></script>
-  <script src="js/calculations.js?v=2.6"></script>
-  <script src="js/currency.js?v=2.6"></script>
-  <script src="js/storage.js?v=2.6"></script>
-  <script src="js/print-renderer.js?v=2.6"></script>
-  <script src="js/local-fs.js?v=2.6"></script>
-  <script src="js/bulk-import-export.js?v=2.6"></script>
-  <script src="js/app.js?v=2.6"></script>
+  <script src="js/vendor/xlsx.full.min.js?v=3.0"></script>
+  <script src="js/calculations.js?v=3.0"></script>
+  <script src="js/currency.js?v=3.0"></script>
+  <script src="js/storage.js?v=3.0"></script>
+  <script src="js/print-renderer.js?v=3.0"></script>
+  <script src="js/local-fs.js?v=3.0"></script>
+  <script src="js/bulk-import-export.js?v=3.0"></script>
+  <script src="js/app.js?v=3.0"></script>
 </body>
 </html>

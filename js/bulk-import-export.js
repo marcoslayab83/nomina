@@ -10,6 +10,10 @@
   const LocalFS = global.NominaLocalFS;
   const Cur = global.NominaCurrency;
 
+  function getXLSX() {
+    return global.XLSX || (typeof window !== 'undefined' ? window.XLSX : undefined);
+  }
+
   /**
    * Limpia y normaliza texto de cabeceras para ser tolerante a errores tipográficos
    */
@@ -77,7 +81,8 @@
    * 1. GENERA Y DESCARGA LA PLANTILLA OFICIAL EN EXCEL (.XLSX)
    */
   function downloadExcelTemplate() {
-    if (typeof XLSX === 'undefined') {
+    const XLSX = getXLSX();
+    if (!XLSX) {
       throw new Error('La librería SheetJS (XLSX) no está cargada.');
     }
 
@@ -200,7 +205,8 @@
    * 2. PROCESA E IMPORTA MASIVAMENTE TRABAJADORES DESDE UN ARCHIVO EXCEL (.XLSX) O CSV
    */
   async function importWorkersFromFile(file) {
-    if (typeof XLSX === 'undefined') {
+    const XLSX = getXLSX();
+    if (!XLSX) {
       throw new Error('La librería SheetJS (XLSX) no está cargada.');
     }
 
@@ -450,6 +456,10 @@
    * Genera el libro Excel consolidado con todos los datos de la base de datos
    */
   function buildMasterWorkbook(expedientes, companies, rates) {
+    const XLSX = getXLSX();
+    if (!XLSX) {
+      throw new Error('La librería SheetJS (XLSX) no está cargada.');
+    }
     const wb = XLSX.utils.book_new();
 
     // 1. Hoja Trabajadores
@@ -502,7 +512,8 @@
   }
 
   function exportMasterExcelBackup(expedientes, companies, rates) {
-    if (typeof XLSX === 'undefined') {
+    const XLSX = getXLSX();
+    if (!XLSX) {
       throw new Error('La librería SheetJS (XLSX) no está cargada.');
     }
     const exps = expedientes || (Store.loadAll ? Store.loadAll() : []);
