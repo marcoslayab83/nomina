@@ -1372,12 +1372,34 @@
     try {
       const res = await Cur.fetchLiveBcvRates();
       if (res && res.success) {
-        if ($('tasa-bcv-usd')) $('tasa-bcv-usd').value = res.usd;
-        if ($('tasa-bcv-eur')) $('tasa-bcv-eur').value = res.eur;
-        if (res.fecha && $('tasa-fecha-ref')) $('tasa-fecha-ref').value = res.fecha;
-        showToast(`✅ Tasas BCV en línea obtenidas: USD ${res.usd} Bs. | EUR ${res.eur} Bs.`);
+        const usd = res.usd || (res.rates && res.rates.tasaUsd);
+        const eur = res.eur || (res.rates && res.rates.tasaEur);
+        const fecha = res.fecha || (res.rates && res.rates.fechaTasa);
+
+        if ($('tasa-bcv-usd')) $('tasa-bcv-usd').value = usd.toFixed(4);
+        if ($('tasa-bcv-eur')) $('tasa-bcv-eur').value = eur.toFixed(4);
+        if (fecha && $('tasa-fecha-ref')) $('tasa-fecha-ref').value = fecha;
+
+        if (res.paralelo && $('tasa-otra-valor')) {
+          if (!$('tasa-otra-valor').value || parseFloat($('tasa-otra-valor').value) < 100) {
+            $('tasa-otra-valor').value = res.paralelo.toFixed(4);
+            if ($('tasa-otra-nombre') && !$('tasa-otra-nombre').value) {
+              $('tasa-otra-nombre').value = 'Tasa Paralelo';
+            }
+          }
+        }
+
+        updateCurrencyUI();
+        if ($('landing-view') && !$('landing-view').classList.contains('hidden')) {
+          renderExpedientesList();
+        }
+        if (activeWorker) {
+          refreshAllCalculations();
+        }
+
+        showToast(`✅ Tasas BCV actualizadas en vivo: USD ${usd.toFixed(2)} Bs. | EUR ${eur.toFixed(2)} Bs.`);
       } else {
-        showToast(res && res.error ? `⚠️ ${res.error}` : 'No se pudo obtener la tasa en línea. Puedes ingresar las tasas manualmente.', true);
+        showToast('No se pudo obtener la tasa en línea. Puedes ingresar las tasas manualmente.', true);
       }
     } catch (err) {
       showToast(`Error al consultar BCV: ${err.message}`, true);
@@ -2235,6 +2257,21 @@
     bindEvents();
     if (Cur) {
       updateCurrencyUI();
+      // Auto-actualizar tasas oficiales BCV en vivo en segundo plano al iniciar
+      Cur.fetchLiveBcvRates().then((res) => {
+        if (res && res.success) {
+          updateCurrencyUI();
+          if ($('landing-view') && !$('landing-view').classList.contains('hidden')) {
+            renderExpedientesList();
+          }
+          if (activeWorker) {
+            refreshAllCalculations();
+          }
+          console.log('✅ Tasas BCV en vivo actualizadas automáticamente:', res);
+        }
+      }).catch((err) => {
+        console.warn('Auto-fetch BCV:', err.message);
+      });
     }
     showLanding();
     if (LocalFS) {
