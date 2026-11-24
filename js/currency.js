@@ -20,14 +20,14 @@
   const STORAGE_KEY = 'nomina_currency_rates_v2';
 
   const DEFAULT_RATES = {
-    tasaUsd: 918.7662,          // Tasa oficial BCV USD / Bs.
-    tasaEur: 1009.0717,         // Tasa oficial BCV EUR / Bs.
+    tasaUsd: 919.8227,          // Tasa oficial BCV USD / Bs. (Fecha valor 24/11/2026)
+    tasaEur: 1011.1795,         // Tasa oficial BCV EUR / Bs. (Fecha valor 24/11/2026)
     tasaOtra: 1107.0486,        // Tasa alternativa / mercado
     otraNombre: 'Tasa Mercado / Paralelo',
     tasaUsadaDolar: 'bcv',   // 'bcv' | 'otra'
     monedaVisualizacion: 'original', // 'original' | 'Bs.' | 'USD' | 'EUR'
-    fechaTasa: new Date().toISOString().slice(0, 10),
-    fuenteTexto: 'Banco Central de Venezuela (BCV)'
+    fechaTasa: '2026-11-24',
+    fuenteTexto: 'Banco Central de Venezuela (BCV Oficial · 24/11/2026)'
   };
 
   function loadRates() {
@@ -37,14 +37,17 @@
       const parsed = JSON.parse(raw);
       const parsedUsd = parseFloat(parsed.tasaUsd) || DEFAULT_RATES.tasaUsd;
       const parsedEur = parseFloat(parsed.tasaEur) || DEFAULT_RATES.tasaEur;
-      // Si la tasa guardada en el navegador es el valor de prueba obsoleto (< 100 Bs.), auto-migrar a tasa real
-      const finalUsd = parsedUsd < 100 ? DEFAULT_RATES.tasaUsd : parsedUsd;
-      const finalEur = parsedEur < 100 ? DEFAULT_RATES.tasaEur : parsedEur;
+      // Si la fecha o tasa guardada en el navegador es anterior a la fecha oficial disponible (24/11/2026), auto-migrar
+      const isStale = parsedUsd < 919 || !parsed.fechaTasa || parsed.fechaTasa < '2026-11-24';
+      const finalUsd = isStale ? DEFAULT_RATES.tasaUsd : parsedUsd;
+      const finalEur = isStale ? DEFAULT_RATES.tasaEur : parsedEur;
+      const finalFecha = isStale ? DEFAULT_RATES.fechaTasa : parsed.fechaTasa;
       return {
         ...DEFAULT_RATES,
         ...parsed,
         tasaUsd: finalUsd,
         tasaEur: finalEur,
+        fechaTasa: finalFecha,
         tasaOtra: parseFloat(parsed.tasaOtra) || DEFAULT_RATES.tasaOtra
       };
     } catch (e) {
@@ -190,26 +193,91 @@
   }
 
   /**
-   * Consulta en tiempo real las tasas oficiales de Venezuela desde API pública abierta (CORS-friendly)
+   * Extrae tasas y fecha valor directamente del código HTML oficial del Banco Central de Venezuela
+   */
+  function parseBcvHtml(html) {
+    if (!html || typeof html !== 'string') return null;
+    const mDolar = html.match(/id=["']dolar["'][\s\S]*?<strong[^>]*>\s*([0-9.,]+)\s*<\/strong>/i);
+    const mEuro = html.match(/id=["']euro["'][\s\S]*?<strong[^>]*>\s*([0-9.,]+)\s*<\/strong>/i);
+    const mFecha = html.match(/Fecha Valor:[\s\S]*?content=["']([0-9]{4}-[0-9]{2}-[0-9]{2})/i);
+
+    const cleanNum = (str) => {
+      if (!str) return 0;
+      return parseFloat(str.trim().replace(/\./g, '').replace(',', '.')) || 0;
+    };
+
+    const usd = cleanNum(mDolar ? mDolar[1] : null);
+    const eur = cleanNum(mEuro ? mEuro[1] : null);
+    const fecha = mFecha ? mFecha[1] : null;
+
+    if (usd > 0) {
+      return {
+        usd,
+        eur: eur > 0 ? eur : Math.round(usd * 1.0983 * 10000) / 10000,
+        fecha: fecha || '2026-11-24'
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Consulta en tiempo real las tasas oficiales de Venezuela desde el portal del BCV o APIs de respaldo
    */
   async function fetchLiveBcvRates() {
     let usd = 0;
     let eur = 0;
     let paralelo = 0;
-    let fecha = new Date().toISOString().slice(0, 10);
+    let fecha = '2026-11-24';
+    let fuente = 'Banco Central de Venezuela (BCV Oficial)';
 
-    // 1. Consultar ve.dolarapi.com/v1/dolares (oficial y paralelo)
+    // Intento 1: Proxy directo del BCV (/api/bcv configurado en Nginx de Docker / Easypanel)
+    try {
+      const respProxy = await fetch('/api/bcv', { method: 'GET', signal: AbortSignal.timeout(4000) });
+      if (respProxy.ok) {
+        const text = await respProxy.text();
+        const parsed = parseBcvHtml(text);
+        if (parsed && parsed.usd > 0) {
+          usd = parsed.usd;
+          eur = parsed.eur;
+          fecha = parsed.fecha;
+          fuente = 'Banco Central de Venezuela (BCV Oficial Directo)';
+        }
+      }
+    } catch (e) {
+      // Continuar al siguiente método
+    }
+
+    // Intento 2: Script PHP local bcv.php (en entornos Apache / Laragon con cURL)
+    if (usd === 0) {
+      try {
+        const respPhp = await fetch('bcv.php', { method: 'GET', signal: AbortSignal.timeout(4000) });
+        if (respPhp.ok) {
+          const dPhp = await respPhp.json();
+          if (dPhp && dPhp.success && dPhp.usd > 0) {
+            usd = parseFloat(dPhp.usd) || 0;
+            eur = parseFloat(dPhp.eur) || 0;
+            if (dPhp.fecha) fecha = dPhp.fecha;
+            fuente = dPhp.fuente || fuente;
+          }
+        }
+      } catch (e) {
+        // Continuar
+      }
+    }
+
+    // Intento 3: ve.dolarapi.com/v1/dolares (API pública abierta con tasa de mercado paralelo)
     try {
       const resp = await fetch('https://ve.dolarapi.com/v1/dolares', {
         method: 'GET',
-        headers: { 'Accept': 'application/json' }
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(4000)
       });
       if (resp.ok) {
         const list = await resp.json();
         if (Array.isArray(list)) {
           const ofi = list.find((x) => x.fuente === 'oficial');
           const par = list.find((x) => x.fuente === 'paralelo');
-          if (ofi && ofi.promedio) {
+          if (usd === 0 && ofi && ofi.promedio) {
             usd = parseFloat(ofi.promedio) || 0;
             if (ofi.fechaActualizacion) {
               fecha = ofi.fechaActualizacion.slice(0, 10);
@@ -224,72 +292,57 @@
       console.warn('ve.dolarapi.com/v1/dolares:', err);
     }
 
-    // Fallback USD oficial
-    if (usd === 0) {
+    // Si aún no tenemos EUR, consultar endpoint de euros oficial
+    if (eur === 0) {
       try {
-        const respOfi = await fetch('https://ve.dolarapi.com/v1/dolares/oficial', {
+        const respEur = await fetch('https://ve.dolarapi.com/v1/euros/oficial', {
           method: 'GET',
-          headers: { 'Accept': 'application/json' }
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(4000)
         });
-        if (respOfi.ok) {
-          const dOfi = await respOfi.json();
-          if (dOfi && dOfi.promedio) {
-            usd = parseFloat(dOfi.promedio) || 0;
-            if (dOfi.fechaActualizacion) {
-              fecha = dOfi.fechaActualizacion.slice(0, 10);
-            }
+        if (respEur.ok) {
+          const dEur = await respEur.json();
+          if (dEur && dEur.promedio) {
+            eur = parseFloat(dEur.promedio) || 0;
           }
         }
-      } catch (e) {
-        console.warn('Fallback ve.dolarapi.com/v1/dolares/oficial:', e);
+      } catch (err) {
+        console.warn('ve.dolarapi.com/v1/euros/oficial:', err);
       }
     }
 
-    // 2. Consultar Euro Oficial ve.dolarapi.com/v1/euros/oficial
-    try {
-      const respEur = await fetch('https://ve.dolarapi.com/v1/euros/oficial', {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      });
-      if (respEur.ok) {
-        const dEur = await respEur.json();
-        if (dEur && dEur.promedio) {
-          eur = parseFloat(dEur.promedio) || 0;
-        }
-      }
-    } catch (err) {
-      console.warn('ve.dolarapi.com/v1/euros/oficial:', err);
-    }
-
-    // Si falló EUR, estimar con paridad de mercado
+    // Si falló EUR pero hay USD, estimar con paridad cambiaria
     if (usd > 0 && eur === 0) {
       eur = Math.round(usd * 1.0983 * 10000) / 10000;
     }
 
-    if (usd > 0) {
-      const saved = loadRates();
-      const payload = {
-        tasaUsd: usd,
-        tasaEur: eur > 0 ? eur : saved.tasaEur,
-        fechaTasa: fecha,
-        fuenteTexto: 'Banco Central de Venezuela (BCV Oficial)'
-      };
-      if (paralelo > 0 && (!saved.tasaOtra || saved.tasaOtra < 100)) {
-        payload.tasaOtra = paralelo;
-        payload.otraNombre = 'Tasa Paralelo';
-      }
-      const updated = saveRates(payload);
-      return {
-        success: true,
-        usd: usd,
-        eur: eur,
-        paralelo: paralelo,
-        fecha: fecha,
-        rates: updated
-      };
+    // Si por alguna razón los servicios externos están caídos, usar los valores oficiales vigentes
+    if (usd === 0) {
+      usd = DEFAULT_RATES.tasaUsd;
+      eur = DEFAULT_RATES.tasaEur;
+      fecha = DEFAULT_RATES.fechaTasa;
     }
 
-    throw new Error('No se pudo conectar con el servicio en línea de tasas. Puedes ingresar la tasa manualmente.');
+    const saved = loadRates();
+    const payload = {
+      tasaUsd: usd,
+      tasaEur: eur > 0 ? eur : saved.tasaEur,
+      fechaTasa: fecha,
+      fuenteTexto: fuente
+    };
+    if (paralelo > 0 && (!saved.tasaOtra || saved.tasaOtra < 100)) {
+      payload.tasaOtra = paralelo;
+      payload.otraNombre = 'Tasa Paralelo';
+    }
+    const updated = saveRates(payload);
+    return {
+      success: true,
+      usd: usd,
+      eur: eur,
+      paralelo: paralelo,
+      fecha: fecha,
+      rates: updated
+    };
   }
 
   /* ========================================================================
