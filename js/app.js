@@ -1315,8 +1315,8 @@
     const effUsd = Cur.getEffectiveUsdRate();
     const isCustom = rates.tasaUsadaDolar === 'otra';
     const rateText = isCustom
-      ? `${effUsd.toFixed(2)} Bs. (${rates.otraNombre || 'Personalizada'})`
-      : `${effUsd.toFixed(2)} Bs.`;
+      ? `USD: ${effUsd.toFixed(2)} (${rates.otraNombre || 'Pers.'}) · EUR: ${rates.tasaEur.toFixed(2)} Bs.`
+      : `BCV USD: ${effUsd.toFixed(2)} · EUR: ${rates.tasaEur.toFixed(2)} Bs.`;
 
     if ($('top-rate-indicator')) {
       $('top-rate-indicator').textContent = rateText;
