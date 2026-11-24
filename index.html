@@ -22,6 +22,9 @@
       <a href="presentacion.html" target="_blank" class="btn btn-ghost-light btn-sm" style="color: #6ee7b7; border-color: rgba(110, 231, 183, 0.4); text-decoration: none; font-weight: 600;" title="Ver Presentación Comercial Interactiva">
         ▶ Presentación
       </a>
+      <button type="button" class="btn btn-ghost-light btn-sm" id="btn-top-pc-dir" title="Vincular o cambiar la carpeta en tu PC para guardar directorios físicos">
+        💻 Ubicación PC: <strong id="top-pc-status" style="color:#6ee7b7;">No seleccionada</strong>
+      </button>
       <button type="button" class="btn btn-ghost-light btn-sm" id="btn-nav-expedientes">
         Expedientes (<span id="top-exp-count">0</span>)
       </button>
@@ -100,6 +103,10 @@
                   <input type="text" id="new-cargo" placeholder="Ej. Analista Contable">
                 </div>
                 <div class="form-group">
+                  <label for="new-departamento">Departamento / Área <span class="req">*</span></label>
+                  <input type="text" id="new-departamento" placeholder="Ej. Departamento de Producción" value="Departamento de Producción">
+                </div>
+                <div class="form-group">
                   <label for="new-fecha-ingreso">Fecha de Ingreso</label>
                   <input type="date" id="new-fecha-ingreso">
                 </div>
@@ -107,7 +114,7 @@
                   <label for="new-sueldo"><strong>Sueldo Mensual Base</strong></label>
                   <input type="number" id="new-sueldo" step="0.01" min="0" placeholder="0.00" style="font-weight:700;">
                 </div>
-                <div class="form-group">
+                <div class="form-group full">
                   <label for="new-moneda">Moneda</label>
                   <select id="new-moneda">
                     <option value="Bs.">Bolívares (Bs.)</option>
@@ -116,7 +123,26 @@
                 </div>
               </div>
 
-              <div style="margin-top:20px;display:flex;gap:10px;">
+              <!-- Destino de Directorio Físico en la PC del Usuario -->
+              <div class="pc-folder-box" style="margin-top:14px;background:#f0fdf4;border:1px dashed #10b981;border-radius:8px;padding:12px 14px;font-size:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                  <strong style="color:#047857;display:flex;align-items:center;gap:6px;">
+                    💻 Ubicación de Archivo en tu PC:
+                  </strong>
+                  <button type="button" class="btn btn-outline btn-xs" id="btn-landing-select-dir" style="padding:3px 10px;font-size:11px;font-weight:600;">
+                    📂 Seleccionar Carpeta en PC
+                  </button>
+                </div>
+                <div style="margin-top:7px;color:#1e293b;font-family:Consolas, monospace;font-size:11.5px;word-break:break-all;background:#fff;padding:6px 10px;border-radius:4px;border:1px solid #cbd5e1;" id="landing-path-preview">
+                  [Carpeta en PC] \ Cuadrados Food \ Departamento de Producción \ Carlos Perez
+                </div>
+                <label style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:11.5px;color:#334155;cursor:pointer;">
+                  <input type="checkbox" id="chk-auto-save-pc" checked>
+                  Crear automáticamente los directorios físicos y archivos en mi PC al guardar
+                </label>
+              </div>
+
+              <div style="margin-top:18px;display:flex;gap:10px;">
                 <button type="submit" class="btn btn-emerald" style="flex:1;padding:11px 18px;font-size:14px;">
                   Crear Expediente y Calcular Beneficios →
                 </button>
@@ -186,11 +212,17 @@
               <span class="pill pill-emerald" id="ws-pill-antiguedad">Antigüedad: —</span>
               <span class="pill pill-emerald" id="ws-pill-salario">Salario Normal: —</span>
             </div>
+            <div id="ws-pc-path-box" style="font-size:11px;color:#cbd5e1;margin-top:6px;font-family:Consolas, monospace;">
+              📁 Carpeta en PC: <span id="ws-pc-path-text" style="color:#6ee7b7;">Sin sincronizar</span>
+            </div>
           </div>
         </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
           <button type="button" class="btn btn-ghost-light btn-sm" id="btn-back-list">
             ← Cambiar Expediente
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-save-worker-pc" style="border-color:#10b981;color:#6ee7b7;font-weight:700;" title="Guardar o actualizar este expediente en tu PC con todos sus recibos y carpetas">
+            💾 Guardar en mi PC
           </button>
           <button type="button" class="btn btn-emerald btn-sm" id="btn-quick-print-tab">
             🖨️ Resumen Listo para Imprimir
@@ -950,10 +982,14 @@
               <div>
                 <div class="archive-title">Carpeta de Archivo: <strong id="print-company-name">EMPRESA, C.A.</strong></div>
                 <div class="archive-sub">Nombre sugerido para el PDF: <code id="print-filename-hint">EMPRESA - Resumen - V14820415_Edith_Sabariego.pdf</code></div>
+                <div class="archive-sub" style="margin-top:2px;">Ruta en tu PC: <code id="print-pc-dest-hint" style="color:#047857;font-weight:700;">[Carpeta en PC] \ Empresa \ Depto \ Trabajador</code></div>
               </div>
             </div>
             <div class="archive-box-actions">
-              <button type="button" class="btn btn-emerald btn-sm" id="btn-archive-pdf">
+              <button type="button" class="btn btn-emerald btn-sm" id="btn-save-pc-direct" title="Crear carpetas y guardar directamente en la ruta de tu PC: [Empresa] \ [Departamento] \ [Trabajador]">
+                📁 Guardar en Carpeta PC
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="btn-archive-pdf">
                 🖨️ Guardar PDF
               </button>
               <button type="button" class="btn btn-outline btn-sm" id="btn-download-html-archive" title="Descargar copia digital completa auto-imprimible para archivar en la carpeta de la empresa">
@@ -1199,6 +1235,34 @@
         <button type="button" class="btn btn-ghost-light btn-sm" id="btn-close-empresas">Cerrar ✕</button>
       </div>
       <div class="modal-body" style="font-size:13px;line-height:1.6;">
+        <!-- Configuración de Ubicación en PC (Disco Local) -->
+        <div class="card" style="margin-bottom:16px;border:1px solid #10b981;background:rgba(16, 185, 129, 0.05);">
+          <div class="card-header" style="padding:10px 14px;background:rgba(16, 185, 129, 0.12);">
+            <strong style="font-size:13px;color:#047857;">💻 Ubicación de Archivo en tu Computadora (Disco Local)</strong>
+          </div>
+          <div class="card-body" style="padding:14px;font-size:12.5px;">
+            <p style="margin:0 0 10px;color:var(--text-secondary);">
+              Selecciona una carpeta raíz en tu PC (por ejemplo: <code>C:\desktop\mis empresas</code>). Al guardar expedientes, NOMINA creará automáticamente la estructura física de directorios:
+              <br>
+              <strong style="color:var(--navy-900);font-family:Consolas, monospace;">[Tu Carpeta en PC] \ [Empresa] \ [Departamento] \ [Trabajador]</strong>
+            </p>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+              <button type="button" class="btn btn-emerald" id="btn-modal-select-pc-dir">
+                📂 Seleccionar / Cambiar Carpeta en mi PC
+              </button>
+              <button type="button" class="btn btn-outline" id="btn-modal-sync-all-pc" title="Crea de inmediato los directorios y archivos de todas las empresas y trabajadores">
+                ⚡ Crear y Sincronizar Todas las Carpetas en mi PC
+              </button>
+              <button type="button" class="btn btn-outline" id="btn-modal-download-zip" title="Descargar como archivo comprimido ZIP con todas las subcarpetas">
+                📦 Descargar Estructura en ZIP
+              </button>
+            </div>
+            <div style="margin-top:10px;font-size:12px;color:#334155;background:#fff;padding:8px 12px;border-radius:6px;border:1px solid #cbd5e1;">
+              <strong>Estado actual:</strong> <span id="label-modal-pc-dir-status" style="color:#047857;font-weight:700;">No has seleccionado ninguna carpeta aún.</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Formulario Crear/Editar Empresa -->
         <div class="card" style="margin-bottom:16px;background:var(--bg-subtle);">
           <div class="card-header" style="padding:10px 14px;">
@@ -1303,6 +1367,7 @@
   <script src="js/calculations.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/print-renderer.js"></script>
+  <script src="js/local-fs.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

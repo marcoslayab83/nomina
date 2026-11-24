@@ -250,6 +250,7 @@
     $('workspace-view').classList.remove('hidden');
     populateAllForms();
     refreshAllCalculations();
+    updateActiveWorkerPathUI();
     switchTab(initialTab || 'tab-expediente');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -373,12 +374,14 @@
 
     const empresaId = $('new-empresa-select')?.value || selectedCompanyFilter || '';
     const sueldoBase = parseFloat($('new-sueldo').value) || 0;
+    const departamento = $('new-departamento')?.value.trim() || 'Departamento de Producción';
 
     const exp = Store.createExpediente({
       nombre,
       apellido,
       cedula,
       cargo: $('new-cargo').value.trim(),
+      departamento,
       fechaIngreso: $('new-fecha-ingreso').value || Store.todayISO(),
       sueldoBase,
       moneda: $('new-moneda').value || 'Bs.',
@@ -386,9 +389,22 @@
     });
 
     Store.upsertExpediente(exp);
+
+    // Guardado automático en PC si el usuario tiene carpeta vinculada y check activo
+    const autoSavePC = $('chk-auto-save-pc')?.checked;
+    if (autoSavePC && LocalFS && LocalFS.isConnected()) {
+      LocalFS.saveWorkerToLocalPC(exp).then((res) => {
+        showToast(`📁 Carpeta física creada en tu PC: ${res.pathString}`);
+      }).catch((err) => {
+        console.warn('Error guardando en PC:', err);
+      });
+    }
+
     e.target.reset();
     $('new-fecha-ingreso').value = Store.todayISO();
+    if ($('new-departamento')) $('new-departamento').value = 'Departamento de Producción';
     if ($('new-empresa-select') && empresaId) $('new-empresa-select').value = empresaId;
+    updateLandingPathPreview();
     showToast(`Expediente ${exp.codigoExpediente} archivado en carpeta "${exp.empresaNombre}".`);
     openExpediente(exp.id);
   }
@@ -1104,6 +1120,164 @@
     a.click();
     URL.revokeObjectURL(url);
     showToast(`Copia digital de ${activeWorker.nombre} ${activeWorker.apellido} descargada para archivar.`);
+  }
+
+  /* ========================================================================
+     GESTIÓN DE CARPETA LOCAL EN PC (FILE SYSTEM ACCESS API)
+     ======================================================================== */
+  const LocalFS = window.NominaLocalFS;
+
+  function updatePCDirStatusUI() {
+    if (!LocalFS) return;
+    const isConn = LocalFS.isConnected();
+    const name = LocalFS.getRootName();
+
+    const topStatus = $('top-pc-status');
+    if (topStatus) {
+      if (isConn && name) {
+        topStatus.textContent = name;
+        topStatus.style.color = '#10b981';
+      } else {
+        topStatus.textContent = 'No seleccionada';
+        topStatus.style.color = '#6ee7b7';
+      }
+    }
+
+    const modalStatus = $('label-modal-pc-dir-status');
+    if (modalStatus) {
+      if (isConn && name) {
+        modalStatus.innerHTML = `🟢 Carpeta vinculada en tu PC: <strong>${esc(name)}</strong> (Lista para escribir subcarpetas y expedientes)`;
+        modalStatus.style.color = '#047857';
+      } else {
+        modalStatus.innerHTML = `⚠️ Ninguna carpeta vinculada. Haz clic en "Seleccionar / Cambiar Carpeta en mi PC".`;
+        modalStatus.style.color = '#b45309';
+      }
+    }
+
+    updateLandingPathPreview();
+    if (activeWorker) {
+      updateActiveWorkerPathUI();
+    }
+  }
+
+  function updateLandingPathPreview() {
+    const root = (LocalFS && LocalFS.getRootName()) || '[Carpeta en PC]';
+    const empSelect = $('new-empresa-select');
+    let empName = 'Cuadrados Food';
+    if (empSelect && empSelect.value) {
+      const c = Store.getCompanyById(empSelect.value);
+      if (c && c.nombre) empName = c.nombre;
+    }
+    const depto = $('new-departamento')?.value.trim() || 'Departamento de Producción';
+    const nom = $('new-nombre')?.value.trim() || 'Carlos';
+    const ape = $('new-apellido')?.value.trim() || 'Perez';
+    const workerName = `${nom} ${ape}`.trim();
+
+    const el = $('landing-path-preview');
+    if (el) {
+      el.textContent = `${root} \\ ${empName} \\ ${depto} \\ ${workerName}`;
+    }
+  }
+
+  function updateActiveWorkerPathUI() {
+    if (!activeWorker || !LocalFS) return;
+    const pathInfo = LocalFS.getWorkerPathStructure(activeWorker);
+    const root = LocalFS.getRootName();
+    const fullText = root ? `${root} \\ ${pathInfo.fullPathString}` : pathInfo.fullPathString;
+
+    if ($('ws-pc-path-text')) $('ws-pc-path-text').textContent = fullText;
+    if ($('print-pc-dest-hint')) $('print-pc-dest-hint').textContent = fullText;
+  }
+
+  async function handleSelectPCDir() {
+    if (!LocalFS) return;
+    if (!LocalFS.isSupported()) {
+      alert('Tu navegador no soporta la selección de directorios locales con la API estándar (File System Access). Te recomendamos usar Google Chrome o Microsoft Edge en tu PC, o usar el botón de Descargar Estructura en ZIP.');
+      return;
+    }
+    try {
+      const res = await LocalFS.selectRootDirectory();
+      if (res) {
+        updatePCDirStatusUI();
+        showToast(`🟢 Carpeta seleccionada: "${res.name}". Ya puedes guardar directorios en tu PC.`);
+      }
+    } catch (err) {
+      showToast(err.message, true);
+    }
+  }
+
+  async function handleSaveActiveWorkerToPC() {
+    if (!activeWorker) return;
+    if (!LocalFS) return;
+
+    if (!LocalFS.isConnected()) {
+      const ok = confirm(`Para guardar la carpeta física de este trabajador en tu PC necesitas seleccionar la carpeta raíz (por ejemplo, 'mis empresas' en tu Escritorio o Disco C:).\n\n¿Deseas seleccionarla ahora?`);
+      if (ok) {
+        try {
+          const res = await LocalFS.selectRootDirectory();
+          if (!res) return;
+          updatePCDirStatusUI();
+        } catch (err) {
+          showToast(err.message, true);
+          return;
+        }
+      } else {
+        return;
+      }
+    }
+
+    try {
+      const calc = Calc.computeWorkerBenefits(activeWorker);
+      const res = await LocalFS.saveWorkerToLocalPC(activeWorker, calc);
+      updateActiveWorkerPathUI();
+      showToast(`✅ ¡Directorio y 5 archivos guardados en tu PC!\n${res.pathString}`);
+    } catch (err) {
+      showToast(`Error al guardar en PC: ${err.message}`, true);
+    }
+  }
+
+  async function handleSyncAllToPC() {
+    if (!LocalFS) return;
+    const all = Store.loadAll();
+    if (all.length === 0) {
+      showToast('No hay expedientes registrados para sincronizar en tu PC.', true);
+      return;
+    }
+
+    if (!LocalFS.isConnected()) {
+      const ok = confirm(`Selecciona la carpeta raíz en tu PC para crear los directorios de todos los trabajadores registrados.`);
+      if (ok) {
+        try {
+          const res = await LocalFS.selectRootDirectory();
+          if (!res) return;
+          updatePCDirStatusUI();
+        } catch (err) {
+          showToast(err.message, true);
+          return;
+        }
+      } else {
+        return;
+      }
+    }
+
+    try {
+      showToast('Creando directorios y archivos en tu PC...');
+      const res = await LocalFS.syncAllToLocalPC(all);
+      showToast(`✅ ¡Sincronización completa! Se crearon los directorios de ${res.totalWorkers} trabajador(es) en "${res.rootName}".`);
+    } catch (err) {
+      showToast(`Error en sincronización: ${err.message}`, true);
+    }
+  }
+
+  function handleDownloadStructuredZip() {
+    if (!LocalFS) return;
+    const all = Store.loadAll();
+    if (all.length === 0) {
+      showToast('No hay expedientes registrados para descargar.', true);
+      return;
+    }
+    LocalFS.exportStructuredZip(all);
+    showToast(`📦 Generando y descargando archivo ZIP con la estructura de carpetas...`);
   }
 
   /* ========================================================================
@@ -1824,6 +1998,40 @@
     if ($('btn-download-html-archive')) {
       $('btn-download-html-archive').addEventListener('click', downloadHTMLArchive);
     }
+
+    // Acciones de Guardado en Disco Local / PC
+    if ($('btn-top-pc-dir')) {
+      $('btn-top-pc-dir').addEventListener('click', () => {
+        openEmpresasModal();
+      });
+    }
+    if ($('btn-landing-select-dir')) {
+      $('btn-landing-select-dir').addEventListener('click', handleSelectPCDir);
+    }
+    if ($('btn-modal-select-pc-dir')) {
+      $('btn-modal-select-pc-dir').addEventListener('click', handleSelectPCDir);
+    }
+    if ($('btn-modal-sync-all-pc')) {
+      $('btn-modal-sync-all-pc').addEventListener('click', handleSyncAllToPC);
+    }
+    if ($('btn-modal-download-zip')) {
+      $('btn-modal-download-zip').addEventListener('click', handleDownloadStructuredZip);
+    }
+    if ($('btn-save-worker-pc')) {
+      $('btn-save-worker-pc').addEventListener('click', handleSaveActiveWorkerToPC);
+    }
+    if ($('btn-save-pc-direct')) {
+      $('btn-save-pc-direct').addEventListener('click', handleSaveActiveWorkerToPC);
+    }
+
+    // Previsualización dinámica de la ruta física en PC mientras el usuario escribe
+    ['new-nombre', 'new-apellido', 'new-departamento', 'new-empresa-select'].forEach((id) => {
+      const el = $(id);
+      if (el) {
+        el.addEventListener('input', updateLandingPathPreview);
+        el.addEventListener('change', updateLandingPathPreview);
+      }
+    });
   }
 
   /* ========================================================================
@@ -1832,5 +2040,12 @@
   document.addEventListener('DOMContentLoaded', () => {
     bindEvents();
     showLanding();
+    if (LocalFS) {
+      LocalFS.init().then(() => {
+        updatePCDirStatusUI();
+      }).catch((e) => {
+        console.warn('LocalFS init:', e);
+      });
+    }
   });
 })();

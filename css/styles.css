@@ -1395,6 +1395,15 @@ table.doc-table tr.grand-total td {
   border-radius: 4px;
 }
 
+.pc-folder-box {
+  transition: all 0.2s ease;
+}
+
+.pc-folder-box:hover {
+  border-color: var(--emerald-600) !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+
 /* ---------- Print Media Rules ---------- */
 @media print {
   @page {
