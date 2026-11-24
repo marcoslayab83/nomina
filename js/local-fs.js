@@ -201,10 +201,18 @@
      ======================================================================== */
   function generateWorkerTxtSummary(worker, calc) {
     const c = calc || (global.NominaCalc ? global.NominaCalc.computeWorkerBenefits(worker) : null);
-    const salNormal = c ? c.salarioNormal.monto.toFixed(2) : (worker.salarioActual?.sueldoBase || 0).toFixed(2);
-    const prestaciones = c ? c.severanceData.montoGarantiaAcumulado.toFixed(2) : '0.00';
-    const utilidades = c ? c.utilidadesData.montoTotal.toFixed(2) : '0.00';
-    const vacaciones = c ? c.vacationsData.montoTotal.toFixed(2) : '0.00';
+    const salNormal = (c && c.salaryData && typeof c.salaryData.salarioNormalMensual === 'number')
+      ? c.salaryData.salarioNormalMensual.toFixed(2)
+      : (worker.salarioActual?.sueldoBase || 0).toFixed(2);
+    const prestaciones = (c && c.severanceData && typeof c.severanceData.montoGarantiaAcumulado === 'number')
+      ? c.severanceData.montoGarantiaAcumulado.toFixed(2)
+      : '0.00';
+    const utilidades = (c && c.utilidadesData && typeof c.utilidadesData.montoTotal === 'number')
+      ? c.utilidadesData.montoTotal.toFixed(2)
+      : '0.00';
+    const vacaciones = (c && c.vacationsData && typeof c.vacationsData.montoTotal === 'number')
+      ? c.vacationsData.montoTotal.toFixed(2)
+      : '0.00';
 
     return `======================================================================
 NOMINA — FICHA LABORAL Y EXPEDIENTE DIGITAL DEL TRABAJADOR
@@ -351,7 +359,7 @@ UBICACIÓN EN DISCO LOCAL:
         ldefFechaEgreso: new Date().toISOString().slice(0, 10),
         ldefMotivo: 'Renuncia Voluntaria',
         ldefAnticipos: 0,
-        ldefIntereses: c.severanceData.montoGarantiaAcumulado * 0.12,
+        ldefIntereses: (c && c.severanceData ? (c.severanceData.montoGarantiaAcumulado || 0) : 0) * 0.12,
         ldefDiasSalarioPendiente: 0,
         ldefOtrasDeducciones: 0,
         ldefIncluirVac: true,
