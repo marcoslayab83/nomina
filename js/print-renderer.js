@@ -96,6 +96,21 @@
     `;
   }
 
+  function getCurrencyHelpers(worker, options) {
+    const fromCur = worker ? (worker.moneda || 'Bs.') : 'Bs.';
+    const toCur = (options && options.displayCurrency && options.displayCurrency !== 'original')
+      ? options.displayCurrency
+      : (global.NominaCurrency ? global.NominaCurrency.getDisplayCurrency(worker) : fromCur);
+
+    const conv = (v) => global.NominaCurrency ? global.NominaCurrency.convert(v, fromCur, toCur) : (parseFloat(v) || 0);
+    const fmt = (v) => global.NominaCalc.formatMoney(conv(v), toCur);
+    const fmtN = (v, d) => global.NominaCalc.formatNumber(conv(v), d);
+    const fmtD = (v) => global.NominaCalc.formatDateVE(v);
+    const legalNote = global.NominaCurrency ? global.NominaCurrency.getExchangeLegalNote(worker, toCur) : '';
+
+    return { cur: toCur, conv, fmt, fmtN, fmtD, legalNote };
+  }
+
   /* ========================================================================
      1. RESUMEN INTEGRAL DEL EXPEDIENTE (COMPLETO)
      ======================================================================== */
@@ -109,10 +124,7 @@
       incluirAportesPatronales: true
     }, options || {});
 
-    const cur = worker.moneda || 'Bs.';
-    const fmt = (v) => global.NominaCalc.formatMoney(v, cur);
-    const fmtN = (v, d) => global.NominaCalc.formatNumber(v, d);
-    const fmtD = (v) => global.NominaCalc.formatDateVE(v);
+    const { cur, conv, fmt, fmtN, fmtD, legalNote } = getCurrencyHelpers(worker, opts);
 
     const { serviceTime, salaryData, vacationsData, utilitiesData, integralData, parafiscalesData, historialSueldos } = calc;
 
@@ -543,6 +555,7 @@
 
       <div class="doc-legal-footer">
         <strong>Fundamento Legal Aplicado:</strong> Decreto con Rango, Valor y Fuerza de Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT: Art. 19 Irrenunciabilidad, Art. 22 Primacía de la Realidad, Art. 104-105 Salario, Art. 106 Recibo de Pago, Art. 113-121 Cálculos Salariales, Art. 131-140 Utilidades, Art. 151 Privilegio, Art. 190-196 Vacaciones y Bono Vacacional); Ley del Seguro Social (Art. 67); Ley del Régimen Prestacional de Empleo (Art. 46); Ley del Régimen Prestacional de Vivienda y Hábitat — BANAVIH (Art. 33); Ley del INCES (Art. 49 y 50); Sentencia N° 99 (31/03/2025) y Sentencia N° 355 (13/08/2025) de la Sala de Casación Social del TSJ.
+        ${legalNote ? `<div style="margin-top:6px;font-style:italic;font-weight:600;color:#1e293b;">⚖️ Referencia Cambiaria: ${esc(legalNote)}</div>` : ''}
       </div>
     `;
 
@@ -554,9 +567,7 @@
      ======================================================================== */
   function renderPeriodicReceipt(worker, calc, tipoPeriodo, options) {
     const o = options || {};
-    const cur = worker.moneda || 'Bs.';
-    const fmt = (v) => global.NominaCalc.formatMoney(v, cur);
-    const fmtD = (v) => global.NominaCalc.formatDateVE(v);
+    const { cur, conv, fmt, fmtN, fmtD, legalNote } = getCurrencyHelpers(worker, o);
 
     const rec = global.NominaCalc.calculatePeriodicReceipt(worker, calc, tipoPeriodo, o);
     const fullName = `${worker.nombre || ''} ${worker.apellido || ''}`.trim();
@@ -694,6 +705,7 @@
 
       <div class="doc-legal-footer">
         Emitido en cumplimiento del Artículo 106 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT), detallando salario, recargos, beneficios no salariales y deducciones legales (LSS Art. 67, LRPE Art. 46, LRPVH Art. 33).
+        ${legalNote ? `<div style="margin-top:6px;font-style:italic;font-weight:600;color:#1e293b;">⚖️ Referencia Cambiaria: ${esc(legalNote)}</div>` : ''}
       </div>
     `;
   }
@@ -703,9 +715,7 @@
      ======================================================================== */
   function renderVacationReceipt(worker, calc, options) {
     const o = options || {};
-    const cur = worker.moneda || 'Bs.';
-    const fmt = (v) => global.NominaCalc.formatMoney(v, cur);
-    const fmtD = (v) => global.NominaCalc.formatDateVE(v);
+    const { cur, conv, fmt, fmtN, fmtD, legalNote } = getCurrencyHelpers(worker, o);
     const fullName = `${worker.nombre || ''} ${worker.apellido || ''}`.trim();
 
     const vData = calc.vacationsData;
@@ -838,6 +848,7 @@
 
       <div class="doc-legal-footer">
         <strong>Naturaleza Jurídica (LOTTT Art. 190–196):</strong> Las vacaciones constituyen un derecho social irrenunciable de descanso remunerado que no puede ser sustituido por pago salvo al finalizar la relación laboral. El pago debe realizarse al inicio del disfrute.
+        ${legalNote ? `<div style="margin-top:6px;font-style:italic;font-weight:600;color:#1e293b;">⚖️ Referencia Cambiaria: ${esc(legalNote)}</div>` : ''}
       </div>
     `;
   }
@@ -847,9 +858,7 @@
      ======================================================================== */
   function renderPartialLiquidation(worker, calc, options) {
     const o = options || {};
-    const cur = worker.moneda || 'Bs.';
-    const fmt = (v) => global.NominaCalc.formatMoney(v, cur);
-    const fmtD = (v) => global.NominaCalc.formatDateVE(v);
+    const { cur, conv, fmt, fmtN, fmtD, legalNote } = getCurrencyHelpers(worker, o);
     const fullName = `${worker.nombre || ''} ${worker.apellido || ''}`.trim();
 
     const liq = global.NominaCalc.calculatePrestacionesAndLiquidacion(worker, calc, o);
@@ -956,6 +965,7 @@
 
       <div class="doc-legal-footer">
         <strong>Base Legal:</strong> Artículos 142, 143 y 144 de la LOTTT. El anticipo de prestaciones sociales hasta el 75% de lo depositado o acreditado es imputable al cálculo definitivo al término de la relación de trabajo y no interrumpe la antigüedad laboral.
+        ${legalNote ? `<div style="margin-top:6px;font-style:italic;font-weight:600;color:#1e293b;">⚖️ Referencia Cambiaria: ${esc(legalNote)}</div>` : ''}
       </div>
     `;
   }
@@ -965,10 +975,7 @@
      ======================================================================== */
   function renderFinalLiquidation(worker, calc, options) {
     const o = options || {};
-    const cur = worker.moneda || 'Bs.';
-    const fmt = (v) => global.NominaCalc.formatMoney(v, cur);
-    const fmtN = (v, d) => global.NominaCalc.formatNumber(v, d);
-    const fmtD = (v) => global.NominaCalc.formatDateVE(v);
+    const { cur, conv, fmt, fmtN, fmtD, legalNote } = getCurrencyHelpers(worker, o);
     const fullName = `${worker.nombre || ''} ${worker.apellido || ''}`.trim();
 
     const liq = global.NominaCalc.calculatePrestacionesAndLiquidacion(worker, calc, o);
@@ -1141,6 +1148,7 @@
 
       <div class="doc-legal-footer">
         <strong>Fundamento Legal:</strong> Artículos 19, 92, 104, 106, 131–140, 142, 143, 144, 151 y 190–196 de la LOTTT; Art. 50 Ley INCES. Las prestaciones sociales y demás créditos laborales gozan de privilegio absoluto sobre otras deudas del patrono (Art. 151 LOTTT).
+        ${legalNote ? `<div style="margin-top:6px;font-style:italic;font-weight:600;color:#1e293b;">⚖️ Referencia Cambiaria: ${esc(legalNote)}</div>` : ''}
       </div>
     `;
   }

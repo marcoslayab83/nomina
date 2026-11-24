@@ -199,20 +199,26 @@
   /* ========================================================================
      4. GENERACIÓN DE CONTENIDOS DE ARCHIVOS
      ======================================================================== */
-  function generateWorkerTxtSummary(worker, calc) {
+  function generateWorkerTxtSummary(worker, calc, options) {
     const c = calc || (global.NominaCalc ? global.NominaCalc.computeWorkerBenefits(worker) : null);
-    const salNormal = (c && c.salaryData && typeof c.salaryData.salarioNormalMensual === 'number')
-      ? c.salaryData.salarioNormalMensual.toFixed(2)
-      : (worker.salarioActual?.sueldoBase || 0).toFixed(2);
-    const prestaciones = (c && c.severanceData && typeof c.severanceData.montoGarantiaAcumulado === 'number')
-      ? c.severanceData.montoGarantiaAcumulado.toFixed(2)
-      : '0.00';
-    const utilidades = (c && c.utilidadesData && typeof c.utilidadesData.montoTotal === 'number')
-      ? c.utilidadesData.montoTotal.toFixed(2)
-      : '0.00';
-    const vacaciones = (c && c.vacationsData && typeof c.vacationsData.montoTotal === 'number')
-      ? c.vacationsData.montoTotal.toFixed(2)
-      : '0.00';
+    const originCur = worker.moneda || 'Bs.';
+    const displayCur = (options && options.displayCurrency && options.displayCurrency !== 'original')
+      ? options.displayCurrency
+      : (global.NominaCurrency ? global.NominaCurrency.getDisplayCurrency(worker) : originCur);
+
+    const conv = (v) => global.NominaCurrency ? global.NominaCurrency.convert(v, originCur, displayCur) : (parseFloat(v) || 0);
+
+    const baseRaw = worker.salarioActual?.sueldoBase || 0;
+    const salNormalRaw = (c && c.salaryData && typeof c.salaryData.salarioNormalMensual === 'number')
+      ? c.salaryData.salarioNormalMensual : baseRaw;
+    const prestacionesRaw = (c && c.severanceData && typeof c.severanceData.montoGarantiaAcumulado === 'number')
+      ? c.severanceData.montoGarantiaAcumulado : 0;
+    const utilidadesRaw = (c && c.utilidadesData && typeof c.utilidadesData.montoTotal === 'number')
+      ? c.utilidadesData.montoTotal : 0;
+    const vacacionesRaw = (c && c.vacationsData && typeof c.vacationsData.montoTotal === 'number')
+      ? c.vacationsData.montoTotal : 0;
+
+    const rateNote = global.NominaCurrency ? global.NominaCurrency.getExchangeLegalNote(worker, displayCur) : '';
 
     return `======================================================================
 NOMINA — FICHA LABORAL Y EXPEDIENTE DIGITAL DEL TRABAJADOR
@@ -230,15 +236,17 @@ DATOS DEL TRABAJADOR:
   - Cargo: ${worker.cargo || 'No especificado'}
   - Departamento / Área: ${worker.departamento || 'General'}
   - Fecha de Ingreso: ${worker.fechaIngreso || 'No especificada'}
-  - Antigüedad: ${c ? `${c.serviceTime.years} años, ${c.serviceTime.months} meses, ${c.serviceTime.days} días` : 'No calculada'}
-  - Moneda de Pago: ${worker.moneda || 'Bs.'}
-  - Sueldo Base Mensual: ${worker.moneda || 'Bs.'} ${(worker.salarioActual?.sueldoBase || 0).toFixed(2)}
-  - Salario Normal Mensual: ${worker.moneda || 'Bs.'} ${salNormal}
+  - Antigüedad: ${c && c.serviceTime ? `${c.serviceTime.years || 0} años, ${c.serviceTime.months || 0} meses, ${c.serviceTime.days || 0} días` : 'No calculada'}
+  - Moneda Original Ficha: ${originCur}
+  - Moneda de Visualización: ${displayCur}
+  - Sueldo Base Mensual: ${displayCur} ${conv(baseRaw).toFixed(2)}${displayCur !== originCur ? ` (Original: ${originCur} ${baseRaw.toFixed(2)})` : ''}
+  - Salario Normal Mensual: ${displayCur} ${conv(salNormalRaw).toFixed(2)}${displayCur !== originCur ? ` (Original: ${originCur} ${salNormalRaw.toFixed(2)})` : ''}
 
 RESUMEN DE BENEFICIOS Y PASIVOS LABORALES:
-  - Prestaciones Sociales Acumuladas (Garantía Art. 142): ${worker.moneda || 'Bs.'} ${prestaciones}
-  - Provisión de Utilidades (Art. 131): ${worker.moneda || 'Bs.'} ${utilidades}
-  - Provisión de Vacaciones y Bono (Art. 190-192): ${worker.moneda || 'Bs.'} ${vacaciones}
+  - Prestaciones Sociales Acumuladas (Garantía Art. 142): ${displayCur} ${conv(prestacionesRaw).toFixed(2)}
+  - Provisión de Utilidades (Art. 131): ${displayCur} ${conv(utilidadesRaw).toFixed(2)}
+  - Provisión de Vacaciones y Bono (Art. 190-192): ${displayCur} ${conv(vacacionesRaw).toFixed(2)}
+  ${rateNote ? `\nREFERENCIA CAMBIARIA APLICADA:\n  - ${rateNote}` : ''}
 
 UBICACIÓN EN DISCO LOCAL:
   - Estructura: ${getWorkerPathStructure(worker).fullPathString}
@@ -246,20 +254,22 @@ UBICACIÓN EN DISCO LOCAL:
 ======================================================================`;
   }
 
-  function generateDigitalDossierHTML(worker, calc) {
+  function generateDigitalDossierHTML(worker, calc, options) {
     const c = calc || (global.NominaCalc ? global.NominaCalc.computeWorkerBenefits(worker) : null);
     const printRenderer = global.NominaPrint;
     let bodyContent = '';
 
+    const opts = Object.assign({
+      incluirJerarquia: true,
+      incluirHistorialSueldos: true,
+      incluirVacaciones: true,
+      incluirUtilidades: true,
+      incluirParafiscales: true,
+      incluirCostoPatronal: true
+    }, options || {});
+
     if (printRenderer && c) {
-      bodyContent = printRenderer.renderDocument('resumen_integral', worker, c, {
-        incluirJerarquia: true,
-        incluirHistorialSueldos: true,
-        incluirVacaciones: true,
-        incluirUtilidades: true,
-        incluirParafiscales: true,
-        incluirCostoPatronal: true
-      });
+      bodyContent = printRenderer.renderDocument('resumen_integral', worker, c, opts);
     } else {
       bodyContent = `<div style="padding:20px;"><h2>Expediente de ${worker.nombre} ${worker.apellido}</h2><p>Cédula: ${worker.cedula}</p></div>`;
     }
@@ -305,20 +315,22 @@ UBICACIÓN EN DISCO LOCAL:
 </html>`;
   }
 
-  function generateReceiptHTML(worker, calc) {
+  function generateReceiptHTML(worker, calc, options) {
     const c = calc || (global.NominaCalc ? global.NominaCalc.computeWorkerBenefits(worker) : null);
     const printRenderer = global.NominaPrint;
     let content = '';
+    const opts = Object.assign({
+      recFechaDesde: '',
+      recFechaHasta: '',
+      recLunesMes: 4,
+      recFormaPago: 'Transferencia Bancaria',
+      recIncluirNoSalariales: true,
+      recProrratearRecargos: true,
+      recMostrarCostoPatronal: false
+    }, options || {});
+
     if (printRenderer && c) {
-      content = printRenderer.renderDocument('recibo_mensual', worker, c, {
-        recFechaDesde: '',
-        recFechaHasta: '',
-        recLunesMes: 4,
-        recFormaPago: 'Transferencia Bancaria',
-        recIncluirNoSalariales: true,
-        recProrratearRecargos: true,
-        recMostrarCostoPatronal: false
-      });
+      content = printRenderer.renderDocument('recibo_mensual', worker, c, opts);
     }
     return `<!DOCTYPE html>
 <html lang="es">
@@ -350,21 +362,23 @@ UBICACIÓN EN DISCO LOCAL:
 </html>`;
   }
 
-  function generateFiniquitoHTML(worker, calc) {
+  function generateFiniquitoHTML(worker, calc, options) {
     const c = calc || (global.NominaCalc ? global.NominaCalc.computeWorkerBenefits(worker) : null);
     const printRenderer = global.NominaPrint;
     let content = '';
+    const opts = Object.assign({
+      ldefFechaEgreso: new Date().toISOString().slice(0, 10),
+      ldefMotivo: 'Renuncia Voluntaria',
+      ldefAnticipos: 0,
+      ldefIntereses: (c && c.severanceData ? (c.severanceData.montoGarantiaAcumulado || 0) : 0) * 0.12,
+      ldefDiasSalarioPendiente: 0,
+      ldefOtrasDeducciones: 0,
+      ldefIncluirVac: true,
+      ldefIncluirUtil: true
+    }, options || {});
+
     if (printRenderer && c) {
-      content = printRenderer.renderDocument('liquidacion_definitiva', worker, c, {
-        ldefFechaEgreso: new Date().toISOString().slice(0, 10),
-        ldefMotivo: 'Renuncia Voluntaria',
-        ldefAnticipos: 0,
-        ldefIntereses: (c && c.severanceData ? (c.severanceData.montoGarantiaAcumulado || 0) : 0) * 0.12,
-        ldefDiasSalarioPendiente: 0,
-        ldefOtrasDeducciones: 0,
-        ldefIncluirVac: true,
-        ldefIncluirUtil: true
-      });
+      content = printRenderer.renderDocument('liquidacion_definitiva', worker, c, opts);
     }
     return `<!DOCTYPE html>
 <html lang="es">
@@ -410,7 +424,7 @@ UBICACIÓN EN DISCO LOCAL:
    * Guarda un trabajador en su carpeta correspondiente dentro de la raíz:
    * [rootHandle] -> [Empresa] -> [Departamento] -> [Trabajador]
    */
-  async function saveWorkerToLocalPC(worker, calc) {
+  async function saveWorkerToLocalPC(worker, calc, options) {
     if (!currentRootHandle) {
       throw new Error('Primero debes seleccionar una carpeta en tu PC.');
     }
@@ -419,6 +433,7 @@ UBICACIÓN EN DISCO LOCAL:
       throw new Error('Se requiere permiso de escritura en la carpeta de tu PC para crear los directorios.');
     }
 
+    const opts = options || {};
     const path = getWorkerPathStructure(worker);
 
     // 1. Carpeta de la Empresa
@@ -433,10 +448,10 @@ UBICACIÓN EN DISCO LOCAL:
     // 4. Preparar archivos
     const c = calc || (global.NominaCalc ? global.NominaCalc.computeWorkerBenefits(worker) : null);
     const jsonStr = JSON.stringify(worker, null, 2);
-    const txtStr = generateWorkerTxtSummary(worker, c);
-    const dossierHtml = generateDigitalDossierHTML(worker, c);
-    const receiptHtml = generateReceiptHTML(worker, c);
-    const finiquitoHtml = generateFiniquitoHTML(worker, c);
+    const txtStr = generateWorkerTxtSummary(worker, c, opts);
+    const dossierHtml = generateDigitalDossierHTML(worker, c, opts);
+    const receiptHtml = generateReceiptHTML(worker, c, opts);
+    const finiquitoHtml = generateFiniquitoHTML(worker, c, opts);
 
     // 5. Escribir archivos dentro de la subcarpeta del trabajador
     await writeTextFileToDirectory(workerDir, `expediente_${sanitizeName(worker.cedula)}.json`, jsonStr);

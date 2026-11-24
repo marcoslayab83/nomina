@@ -7,6 +7,8 @@
   const Calc = window.NominaCalc;
   const Store = window.NominaStore;
   const Print = window.NominaPrint;
+  const LocalFS = window.NominaLocalFS;
+  const Cur = window.NominaCurrency;
 
   let activeWorker = null;
   let activeTab = 'tab-expediente';
@@ -31,6 +33,14 @@
       .replace(/[\\/:*?"<>|]/g, '')
       .replace(/\s+/g, '_')
       .trim();
+  }
+
+  function getCurrencyHelpers(worker) {
+    const origCur = worker ? (worker.moneda || 'Bs.') : 'Bs.';
+    const dispCur = Cur ? Cur.getDisplayCurrency(worker) : origCur;
+    const conv = (v) => (Cur ? Cur.convert(v, origCur, dispCur) : v);
+    const fmt = (v) => (Cur ? Cur.formatMoneyConverted(v, origCur, dispCur) : Calc.formatMoney(v, origCur));
+    return { origCur, dispCur, conv, fmt };
   }
 
   function getDocTypeLabel(docType) {
@@ -321,8 +331,13 @@
 
     listEl.innerHTML = list.map((w) => {
       const calc = Calc.computeWorkerBenefits(w);
-      const cur = w.moneda || 'Bs.';
+      const { origCur, dispCur, fmt } = getCurrencyHelpers(w);
       const sueldoBase = w.salarioActual?.sueldoBase || 0;
+      const sueldoBaseFmt = fmt(sueldoBase);
+      const salNormalFmt = fmt(calc.salaryData.salarioNormalMensual);
+      const diffCurPill = (dispCur !== 'original' && dispCur !== origCur)
+        ? `<span class="pill" style="font-size:9.5px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;padding:1px 5px;" title="Moneda original del contrato: ${esc(origCur)}">Orig: ${esc(origCur)}</span>`
+        : '';
       return `
         <div class="expediente-item">
           <div class="exp-avatar">${esc(getInitials(w.nombre, w.apellido))}</div>
@@ -330,13 +345,14 @@
             <div class="exp-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               <span>${esc(w.nombre)} ${esc(w.apellido)}</span>
               <span class="pill" style="font-size:10.5px;background:#e8eff8;color:var(--navy-900);border:1px solid #cbd5e1;padding:2px 8px;">📁 ${esc(w.empresaNombre || 'EMPRESA, C.A.')}</span>
+              ${diffCurPill}
             </div>
             <div class="exp-details">
               <span><strong>C.I.:</strong> ${esc(w.cedula)}</span>
               <span><strong>Cargo:</strong> ${esc(w.cargo || 'Sin asignar')}</span>
               <span><strong>Antigüedad:</strong> ${esc(calc.serviceTime.text)}</span>
-              <span><strong>Sueldo Base:</strong> <strong style="color:var(--emerald-700);">${esc(Calc.formatMoney(sueldoBase, cur))}</strong></span>
-              <span><strong>Salario Normal:</strong> ${esc(Calc.formatMoney(calc.salaryData.salarioNormalMensual, cur))}</span>
+              <span><strong>Sueldo Base:</strong> <strong style="color:var(--emerald-700);">${esc(sueldoBaseFmt)}</strong></span>
+              <span><strong>Salario Normal:</strong> ${esc(salNormalFmt)}</span>
             </div>
           </div>
           <div class="exp-actions">
@@ -393,7 +409,8 @@
     // Guardado automático en PC si el usuario tiene carpeta vinculada y check activo
     const autoSavePC = $('chk-auto-save-pc')?.checked;
     if (autoSavePC && LocalFS && LocalFS.isConnected()) {
-      LocalFS.saveWorkerToLocalPC(exp).then((res) => {
+      const dispCur = Cur ? Cur.getDisplayCurrency(exp) : exp.moneda;
+      LocalFS.saveWorkerToLocalPC(exp, null, { displayCurrency: dispCur }).then((res) => {
         showToast(`📁 Carpeta física creada en tu PC: ${res.pathString}`);
       }).catch((err) => {
         console.warn('Error guardando en PC:', err);
@@ -496,8 +513,7 @@
   function refreshAllCalculations() {
     if (!activeWorker) return;
     const calc = Calc.computeWorkerBenefits(activeWorker);
-    const cur = activeWorker.moneda || 'Bs.';
-    const fmt = (v) => Calc.formatMoney(v, cur);
+    const { origCur, dispCur, fmt } = getCurrencyHelpers(activeWorker);
 
     // 1. Banner Superior
     $('ws-avatar').textContent = getInitials(activeWorker.nombre, activeWorker.apellido);
@@ -506,7 +522,8 @@
     $('ws-pill-codigo').textContent = activeWorker.codigoExpediente;
     $('ws-pill-cargo').textContent = activeWorker.cargo ? `Cargo: ${activeWorker.cargo}` : 'Cargo sin asignar';
     $('ws-pill-antiguedad').textContent = `Tiempo de servicio: ${calc.serviceTime.text}`;
-    $('ws-pill-salario').textContent = `Salario Normal: ${fmt(calc.salaryData.salarioNormalMensual)}`;
+    const origNotice = (dispCur !== 'original' && dispCur !== origCur) ? ` (${dispCur})` : '';
+    $('ws-pill-salario').textContent = `Salario Normal: ${fmt(calc.salaryData.salarioNormalMensual)}${origNotice}`;
 
     // 2. Tab 1: KPIs Tiempo de Servicio
     const st = calc.serviceTime;
@@ -603,8 +620,7 @@
 
   /* ---------- Tab 3: Sueldos Devengados y Recargos ---------- */
   function renderSalaryUI(calc) {
-    const cur = activeWorker.moneda || 'Bs.';
-    const fmt = (v) => Calc.formatMoney(v, cur);
+    const { fmt } = getCurrencyHelpers(activeWorker);
     const s = calc.salaryData;
     const integ = calc.integralData;
 
@@ -668,8 +684,7 @@
 
   /* ---------- Tab 4: Vacaciones ---------- */
   function renderVacationsUI(calc) {
-    const cur = activeWorker.moneda || 'Bs.';
-    const fmt = (v) => Calc.formatMoney(v, cur);
+    const { fmt } = getCurrencyHelpers(activeWorker);
     const v = calc.vacationsData;
 
     $('kpi-vacaciones').innerHTML = `
@@ -756,8 +771,7 @@
 
   /* ---------- Tab 5: Utilidades y Parafiscales ---------- */
   function renderUtilitiesAndParafiscalesUI(calc) {
-    const cur = activeWorker.moneda || 'Bs.';
-    const fmt = (v) => Calc.formatMoney(v, cur);
+    const { fmt } = getCurrencyHelpers(activeWorker);
     const u = calc.utilitiesData;
     const p = calc.parafiscalesData;
 
@@ -971,18 +985,28 @@
   }
 
   function collectPrintOptions() {
+    let printCur = $('select-print-currency') ? $('select-print-currency').value : 'global';
+    let targetCur = 'original';
+    if (printCur === 'global') {
+      targetCur = Cur ? Cur.getDisplayCurrency(activeWorker) : (activeWorker ? (activeWorker.moneda || 'Bs.') : 'Bs.');
+    } else {
+      targetCur = printCur; // 'original', 'Bs.', 'USD', 'EUR'
+    }
+
+    const baseOpts = { displayCurrency: targetCur };
+
     if (activeDocType === 'resumen_integral') {
-      return {
+      return Object.assign(baseOpts, {
         incluirJerarquia: $('opt-print-jerarquia').checked,
         incluirHistorialSueldos: $('opt-print-historial').checked,
         incluirVacaciones: $('opt-print-vacaciones').checked,
         incluirUtilidades: $('opt-print-utilidades').checked,
         incluirParafiscales: $('opt-print-parafiscales').checked,
         incluirAportesPatronales: $('opt-print-patronal').checked
-      };
+      });
     }
     if (activeDocType === 'recibo_mensual' || activeDocType === 'recibo_quincenal' || activeDocType === 'recibo_semanal') {
-      return {
+      return Object.assign(baseOpts, {
         quincenaNum: $('rec-quincena-num').value,
         fechaDesde: $('rec-fecha-desde').value,
         fechaHasta: $('rec-fecha-hasta').value,
@@ -991,10 +1015,10 @@
         incluirNoSalarial: $('rec-incluir-nosal').checked,
         prorratearRecargos: $('rec-prorratear-recargos').checked,
         mostrarAportesPatronales: $('rec-mostrar-patronal').checked
-      };
+      });
     }
     if (activeDocType === 'recibo_vacaciones') {
-      return {
+      return Object.assign(baseOpts, {
         vacPeriodoId: $('rvac-periodo-select').value,
         fechaSalida: $('rvac-fecha-salida').value,
         fechaReincorporacion: $('rvac-fecha-reinc').value,
@@ -1002,10 +1026,10 @@
         otrasDedVac: parseFloat($('rvac-otras-ded').value) || 0,
         obsVac: $('rvac-obs').value.trim(),
         aplicarFaovVac: $('rvac-aplicar-faov').checked
-      };
+      });
     }
     if (activeDocType === 'liquidacion_parcial') {
-      return {
+      return Object.assign(baseOpts, {
         fechaEgreso: $('lpar-fecha-corte').value || activeWorker.fechaCorte,
         motivoAnticipo: $('lpar-motivo').value,
         porcentajeAnticipo: parseFloat($('lpar-porcentaje').value) || 0,
@@ -1013,10 +1037,10 @@
         anticiposPrevios: parseFloat($('lpar-anticipos-prev').value) || 0,
         interesesPrestaciones: parseFloat($('lpar-intereses').value) || 0,
         incluirVacEnParcial: $('lpar-incluir-vac').checked
-      };
+      });
     }
     if (activeDocType === 'liquidacion_definitiva') {
-      return {
+      return Object.assign(baseOpts, {
         fechaEgreso: $('ldef-fecha-egreso').value || activeWorker.fechaCorte,
         motivoEgreso: $('ldef-motivo').value,
         anticiposPrevios: parseFloat($('ldef-anticipos').value) || 0,
@@ -1025,9 +1049,9 @@
         deduccionesFinales: parseFloat($('ldef-deducciones').value) || 0,
         incluirVacaciones: $('ldef-incluir-vac').checked,
         incluirUtilidades: $('ldef-incluir-util').checked
-      };
+      });
     }
-    return {};
+    return baseOpts;
   }
 
   function renderPrintSheet(calcOpt) {
@@ -1125,8 +1149,6 @@
   /* ========================================================================
      GESTIÓN DE CARPETA LOCAL EN PC (FILE SYSTEM ACCESS API)
      ======================================================================== */
-  const LocalFS = window.NominaLocalFS;
-
   function updatePCDirStatusUI() {
     if (!LocalFS) return;
     const isConn = LocalFS.isConnected();
@@ -1228,7 +1250,10 @@
 
     try {
       const calc = Calc.computeWorkerBenefits(activeWorker);
-      const res = await LocalFS.saveWorkerToLocalPC(activeWorker, calc);
+      const printOpts = collectPrintOptions();
+      const res = await LocalFS.saveWorkerToLocalPC(activeWorker, calc, {
+        displayCurrency: printOpts.displayCurrency || (Cur ? Cur.getDisplayCurrency(activeWorker) : activeWorker.moneda)
+      });
       updateActiveWorkerPathUI();
       showToast(`✅ ¡Directorio y 5 archivos guardados en tu PC!\n${res.pathString}`);
     } catch (err) {
@@ -1262,7 +1287,8 @@
 
     try {
       showToast('Creando directorios y archivos en tu PC...');
-      const res = await LocalFS.syncAllToLocalPC(all);
+      const dispCur = Cur ? Cur.getRates().monedaVisualizacion : 'original';
+      const res = await LocalFS.syncAllToLocalPC(all, { displayCurrency: dispCur });
       showToast(`✅ ¡Sincronización completa! Se crearon los directorios de ${res.totalWorkers} trabajador(es) en "${res.rootName}".`);
     } catch (err) {
       showToast(`Error en sincronización: ${err.message}`, true);
@@ -1278,6 +1304,146 @@
     }
     LocalFS.exportStructuredZip(all);
     showToast(`📦 Generando y descargando archivo ZIP con la estructura de carpetas...`);
+  }
+
+  /* ========================================================================
+     GESTIÓN DE TASAS DE CAMBIO Y MONEDA UNIVERSAL
+     ======================================================================== */
+  function updateCurrencyUI() {
+    if (!Cur) return;
+    const rates = Cur.getRates();
+    const effUsd = Cur.getEffectiveUsdRate();
+    const isCustom = rates.tasaUsadaDolar === 'otra';
+    const rateText = isCustom
+      ? `${effUsd.toFixed(2)} Bs. (${rates.otraNombre || 'Personalizada'})`
+      : `${effUsd.toFixed(2)} Bs.`;
+
+    if ($('top-rate-indicator')) {
+      $('top-rate-indicator').textContent = rateText;
+    }
+    if ($('select-global-currency')) {
+      $('select-global-currency').value = rates.monedaVisualizacion || 'original';
+    }
+    if ($('modal-select-display-cur')) {
+      $('modal-select-display-cur').value = rates.monedaVisualizacion || 'original';
+    }
+    if ($('tasa-bcv-usd')) {
+      $('tasa-bcv-usd').value = rates.tasaUsd;
+    }
+    if ($('tasa-bcv-eur')) {
+      $('tasa-bcv-eur').value = rates.tasaEur;
+    }
+    if ($('tasa-fecha-ref')) {
+      $('tasa-fecha-ref').value = rates.fechaTasa || '';
+    }
+    if ($('tasa-otra-nombre')) {
+      $('tasa-otra-nombre').value = rates.otraNombre || '';
+    }
+    if ($('tasa-otra-valor')) {
+      $('tasa-otra-valor').value = rates.tasaOtra || '';
+    }
+
+    const radios = document.querySelectorAll('input[name="radio-tasa-dolar"]');
+    radios.forEach((r) => {
+      r.checked = (r.value === rates.tasaUsadaDolar);
+    });
+  }
+
+  function openTasasModal() {
+    updateCurrencyUI();
+    const modal = $('modal-tasas');
+    if (modal) modal.classList.remove('hidden');
+  }
+
+  function closeTasasModal() {
+    const modal = $('modal-tasas');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  async function handleFetchBcvLive() {
+    if (!Cur) return;
+    const btn = $('btn-fetch-bcv-live');
+    const originalText = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Consultando BCV...';
+    }
+
+    try {
+      const res = await Cur.fetchLiveBcvRates();
+      if (res && res.success) {
+        if ($('tasa-bcv-usd')) $('tasa-bcv-usd').value = res.usd;
+        if ($('tasa-bcv-eur')) $('tasa-bcv-eur').value = res.eur;
+        if (res.fecha && $('tasa-fecha-ref')) $('tasa-fecha-ref').value = res.fecha;
+        showToast(`✅ Tasas BCV en línea obtenidas: USD ${res.usd} Bs. | EUR ${res.eur} Bs.`);
+      } else {
+        showToast(res && res.error ? `⚠️ ${res.error}` : 'No se pudo obtener la tasa en línea. Puedes ingresar las tasas manualmente.', true);
+      }
+    } catch (err) {
+      showToast(`Error al consultar BCV: ${err.message}`, true);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+  }
+
+  function handleSaveTasasForm(e) {
+    if (e) e.preventDefault();
+    if (!Cur) return;
+
+    const usdVal = parseFloat($('tasa-bcv-usd')?.value);
+    const eurVal = parseFloat($('tasa-bcv-eur')?.value);
+    const otraVal = parseFloat($('tasa-otra-valor')?.value);
+    const otraNom = $('tasa-otra-nombre')?.value.trim();
+    const fecha = $('tasa-fecha-ref')?.value;
+    const radioSel = document.querySelector('input[name="radio-tasa-dolar"]:checked')?.value || 'bcv';
+    const dispCur = $('modal-select-display-cur')?.value || 'original';
+
+    Cur.saveRates({
+      tasaUsd: !isNaN(usdVal) && usdVal > 0 ? usdVal : 60.50,
+      tasaEur: !isNaN(eurVal) && eurVal > 0 ? eurVal : 64.20,
+      fechaTasa: fecha || new Date().toISOString().slice(0, 10),
+      otraNombre: otraNom || 'Tasa Personalizada',
+      tasaOtra: !isNaN(otraVal) && otraVal > 0 ? otraVal : 0,
+      tasaUsadaDolar: radioSel,
+      monedaVisualizacion: dispCur
+    });
+
+    updateCurrencyUI();
+    closeTasasModal();
+
+    if ($('landing-view') && !$('landing-view').classList.contains('hidden')) {
+      renderExpedientesList();
+    }
+    if (activeWorker) {
+      refreshAllCalculations();
+    }
+
+    showToast('✅ Configuración de tasas de cambio y moneda universal guardada con éxito.');
+  }
+
+  function handleGlobalCurrencyChange(e) {
+    if (!Cur) return;
+    const newCur = e.target.value;
+    Cur.saveRates({ monedaVisualizacion: newCur });
+    updateCurrencyUI();
+
+    if ($('landing-view') && !$('landing-view').classList.contains('hidden')) {
+      renderExpedientesList();
+    }
+    if (activeWorker) {
+      refreshAllCalculations();
+    }
+
+    const curLabels = {
+      original: 'Moneda Original de cada Ficha',
+      'Bs.': 'Bolívares (Bs.)',
+      USD: 'Dólares Americanos (USD)',
+      EUR: 'Euros (EUR)'
+    };
+    showToast(`💱 Moneda de visualización universal cambiada a: ${curLabels[newCur] || newCur}`);
   }
 
   /* ========================================================================
@@ -2032,6 +2198,34 @@
         el.addEventListener('change', updateLandingPathPreview);
       }
     });
+
+    // Configuración de Tasas de Cambio BCV / Personalizadas y Moneda Universal
+    if ($('btn-open-tasas-modal')) {
+      $('btn-open-tasas-modal').addEventListener('click', openTasasModal);
+    }
+    if ($('btn-close-tasas')) {
+      $('btn-close-tasas').addEventListener('click', closeTasasModal);
+    }
+    if ($('btn-cancel-tasas')) {
+      $('btn-cancel-tasas').addEventListener('click', closeTasasModal);
+    }
+    if ($('modal-tasas')) {
+      $('modal-tasas').addEventListener('click', (e) => {
+        if (e.target === $('modal-tasas')) closeTasasModal();
+      });
+    }
+    if ($('form-tasas-cambio')) {
+      $('form-tasas-cambio').addEventListener('submit', handleSaveTasasForm);
+    }
+    if ($('btn-fetch-bcv-live')) {
+      $('btn-fetch-bcv-live').addEventListener('click', handleFetchBcvLive);
+    }
+    if ($('select-global-currency')) {
+      $('select-global-currency').addEventListener('change', handleGlobalCurrencyChange);
+    }
+    if ($('select-print-currency')) {
+      $('select-print-currency').addEventListener('change', () => renderPrintSheet());
+    }
   }
 
   /* ========================================================================
@@ -2039,6 +2233,9 @@
      ======================================================================== */
   document.addEventListener('DOMContentLoaded', () => {
     bindEvents();
+    if (Cur) {
+      updateCurrencyUI();
+    }
     showLanding();
     if (LocalFS) {
       LocalFS.init().then(() => {
