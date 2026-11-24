@@ -298,6 +298,7 @@
   global.NominaCurrency = {
     DEFAULT_RATES,
     loadRates,
+    getRates: loadRates,
     saveRates,
     getEffectiveUsdRate,
     getEffectiveEurRate,

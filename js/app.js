@@ -1287,7 +1287,8 @@
 
     try {
       showToast('Creando directorios y archivos en tu PC...');
-      const dispCur = Cur ? Cur.getRates().monedaVisualizacion : 'original';
+      const rates = Cur ? (typeof Cur.getRates === 'function' ? Cur.getRates() : Cur.loadRates()) : null;
+      const dispCur = rates ? (rates.monedaVisualizacion || 'original') : 'original';
       const res = await LocalFS.syncAllToLocalPC(all, { displayCurrency: dispCur });
       showToast(`✅ ¡Sincronización completa! Se crearon los directorios de ${res.totalWorkers} trabajador(es) en "${res.rootName}".`);
     } catch (err) {
@@ -1311,12 +1312,13 @@
      ======================================================================== */
   function updateCurrencyUI() {
     if (!Cur) return;
-    const rates = Cur.getRates();
-    const effUsd = Cur.getEffectiveUsdRate();
+    const rates = (typeof Cur.getRates === 'function') ? Cur.getRates() : Cur.loadRates();
+    const effUsd = Cur.getEffectiveUsdRate(rates);
+    const effEur = Cur.getEffectiveEurRate(rates);
     const isCustom = rates.tasaUsadaDolar === 'otra';
     const rateText = isCustom
-      ? `USD: ${effUsd.toFixed(2)} (${rates.otraNombre || 'Pers.'}) · EUR: ${rates.tasaEur.toFixed(2)} Bs.`
-      : `BCV USD: ${effUsd.toFixed(2)} · EUR: ${rates.tasaEur.toFixed(2)} Bs.`;
+      ? `USD: ${effUsd.toFixed(2)} (${rates.otraNombre || 'Pers.'}) · EUR: ${effEur.toFixed(2)} Bs.`
+      : `BCV USD: ${effUsd.toFixed(2)} · EUR: ${effEur.toFixed(2)} Bs.`;
 
     if ($('top-rate-indicator')) {
       $('top-rate-indicator').textContent = rateText;
