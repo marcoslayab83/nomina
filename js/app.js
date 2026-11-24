@@ -1471,6 +1471,240 @@
   }
 
   /* ========================================================================
+     CARGA MASIVA EXCEL / CSV Y RESPALDO MAESTRO
+     ======================================================================== */
+  const Bulk = window.NominaBulk;
+  let bulkSelectedFile = null;
+
+  function openBulkModal() {
+    bulkSelectedFile = null;
+    const fileInput = $('input-bulk-file');
+    if (fileInput) fileInput.value = '';
+    const fileInfo = $('bulk-file-info');
+    if (fileInfo) fileInfo.style.display = 'none';
+    const procBtn = $('btn-process-bulk-import');
+    if (procBtn) procBtn.disabled = true;
+    const resBox = $('bulk-results-box');
+    if (resBox) resBox.classList.add('hidden');
+    const modal = $('modal-bulk-import');
+    if (modal) modal.classList.remove('hidden');
+  }
+
+  function closeBulkModal() {
+    const modal = $('modal-bulk-import');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  function handleDownloadBulkTemplate() {
+    try {
+      if (Bulk && typeof Bulk.downloadExcelTemplate === 'function') {
+        Bulk.downloadExcelTemplate();
+        showToast('📥 Plantilla Excel oficial descargada con éxito.');
+      } else {
+        showToast('El módulo de Carga Masiva no está cargado.', true);
+      }
+    } catch (err) {
+      showToast(`Error al descargar plantilla: ${err.message}`, true);
+    }
+  }
+
+  function handleBulkFileSelection(file) {
+    if (!file) return;
+    bulkSelectedFile = file;
+    const fileInfo = $('bulk-file-info');
+    const nameText = $('bulk-file-name-text');
+    const procBtn = $('btn-process-bulk-import');
+    if (fileInfo && nameText) {
+      nameText.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+      fileInfo.style.display = 'block';
+    }
+    if (procBtn) procBtn.disabled = false;
+  }
+
+  async function handleExecuteBulkImport() {
+    if (!bulkSelectedFile) {
+      showToast('Selecciona primero un archivo Excel o CSV.', true);
+      return;
+    }
+    const procBtn = $('btn-process-bulk-import');
+    const originalText = procBtn ? procBtn.textContent : '';
+    if (procBtn) {
+      procBtn.disabled = true;
+      procBtn.textContent = '⏳ Procesando e Importando...';
+    }
+
+    try {
+      const res = await Bulk.importWorkersFromFile(bulkSelectedFile);
+      if (res && res.success) {
+        // Mostrar resultados en el modal
+        const resBox = $('bulk-results-box');
+        if (resBox) resBox.classList.remove('hidden');
+        if ($('res-bulk-created')) $('res-bulk-created').textContent = res.imported;
+        if ($('res-bulk-updated')) $('res-bulk-updated').textContent = res.updated;
+        if ($('res-bulk-total')) $('res-bulk-total').textContent = res.totalRows;
+
+        const errList = $('bulk-errors-list');
+        if (errList) {
+          if (res.errors && res.errors.length > 0) {
+            errList.innerHTML = `<strong>Observaciones (${res.errors.length}):</strong><br>${res.errors.map((e) => `• ${esc(e)}`).join('<br>')}`;
+            errList.style.display = 'block';
+          } else {
+            errList.style.display = 'none';
+          }
+        }
+
+        // Si se solicitó sincronización con la PC y está conectada
+        const chkSync = $('chk-bulk-sync-pc');
+        if (chkSync && chkSync.checked && LocalFS && LocalFS.isConnected && LocalFS.isConnected()) {
+          try {
+            await LocalFS.syncAllToLocalPC();
+            showToast(`✅ Directorios y expedientes sincronizados en tu PC (${LocalFS.getRootName()}).`);
+          } catch (fsErr) {
+            console.warn('Error sincronizando carpetas PC:', fsErr);
+          }
+        }
+
+        // Actualizar listas y contadores
+        populateCompanyDropdowns();
+        renderCompanyTabs();
+        renderExpedientesList();
+        updateTopCount();
+
+        showToast(`🎉 Carga masiva completada: ${res.imported} creados, ${res.updated} actualizados.`);
+      }
+    } catch (err) {
+      showToast(`Error al procesar carga masiva: ${err.message}`, true);
+    } finally {
+      if (procBtn) {
+        procBtn.disabled = false;
+        procBtn.textContent = originalText;
+      }
+    }
+  }
+
+  function updateBackupModalPCStatus() {
+    const lbl = $('backup-pc-folder-label');
+    if (!lbl) return;
+    if (LocalFS && LocalFS.isConnected && LocalFS.isConnected()) {
+      lbl.textContent = `✅ ${LocalFS.getRootName()}`;
+      lbl.style.color = '#047857';
+    } else {
+      lbl.textContent = '⚠️ No vinculada (se descargará al navegador)';
+      lbl.style.color = '#b45309';
+    }
+  }
+
+  function openBackupModal() {
+    updateBackupModalPCStatus();
+    const restoreInput = $('input-restore-master-file');
+    if (restoreInput) restoreInput.value = '';
+    const restoreBtn = $('btn-execute-restore-backup');
+    if (restoreBtn) restoreBtn.disabled = true;
+    const modal = $('modal-backup');
+    if (modal) modal.classList.remove('hidden');
+  }
+
+  function closeBackupModal() {
+    const modal = $('modal-backup');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  async function handleSaveMasterBackupToPC() {
+    if (!Bulk) return;
+    const btn = $('btn-save-master-backup-pc');
+    const originalText = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Guardando Respaldo Maestro...';
+    }
+
+    try {
+      // Si la PC no está conectada, invitar a conectarla
+      if (LocalFS && !LocalFS.isConnected()) {
+        await handleSelectPCDir();
+        updateBackupModalPCStatus();
+      }
+
+      const res = await Bulk.exportMasterBackup({ includeExcel: true });
+      if (res && res.success) {
+        let msg = `✅ Respaldo descargado: ${res.totalExpedientes} expedientes y ${res.totalEmpresas} empresas.`;
+        if (res.pcSaved) {
+          msg = `✅ Respaldo Maestro guardado directamente en: ${res.pcPath}`;
+        }
+        showToast(msg);
+      }
+    } catch (err) {
+      showToast(`Error al exportar respaldo: ${err.message}`, true);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+  }
+
+  function handleDownloadBackupJSON() {
+    if (!Bulk) return;
+    try {
+      Bulk.exportMasterBackup({ includeExcel: false });
+      showToast('⬇️ Descargando archivo de respaldo JSON...');
+    } catch (err) {
+      showToast(`Error al descargar respaldo: ${err.message}`, true);
+    }
+  }
+
+  function handleDownloadBackupExcel() {
+    if (!Bulk) return;
+    try {
+      Bulk.exportMasterExcelBackup();
+      showToast('📊 Generando y descargando libro Excel consolidado...');
+    } catch (err) {
+      showToast(`Error al exportar Excel: ${err.message}`, true);
+    }
+  }
+
+  async function handleExecuteRestoreBackup() {
+    const input = $('input-restore-master-file');
+    const file = input && input.files ? input.files[0] : null;
+    if (!file) {
+      showToast('Selecciona un archivo de respaldo (.json) primero.', true);
+      return;
+    }
+
+    if (!confirm('¿Estás seguro de restaurar la base de datos completa desde este archivo? Se repondrán todas las empresas, expedientes y tasas de cambio.')) {
+      return;
+    }
+
+    const btn = $('btn-execute-restore-backup');
+    const originalText = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Restaurando Base de Datos...';
+    }
+
+    try {
+      const res = await Bulk.restoreMasterBackupFromFile(file);
+      if (res && res.success) {
+        populateCompanyDropdowns();
+        renderCompanyTabs();
+        renderExpedientesList();
+        updateTopCount();
+        if (Cur) updateCurrencyUI();
+
+        showToast(`🎉 Base de datos restaurada con éxito: ${res.expedientesCount} expedientes y ${res.empresasCount} empresas restablecidas.`);
+        closeBackupModal();
+      }
+    } catch (err) {
+      showToast(`Error al restaurar base de datos: ${err.message}`, true);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+  }
+
+  /* ========================================================================
      EVENT LISTENERS
      ======================================================================== */
   function bindEvents() {
@@ -2249,6 +2483,74 @@
     }
     if ($('select-print-currency')) {
       $('select-print-currency').addEventListener('change', () => renderPrintSheet());
+    }
+
+    // Acciones de Carga Masiva (Excel / CSV)
+    if ($('btn-topbar-bulk')) $('btn-topbar-bulk').addEventListener('click', openBulkModal);
+    if ($('btn-landing-bulk-import')) $('btn-landing-bulk-import').addEventListener('click', openBulkModal);
+    if ($('btn-landing-dl-template')) $('btn-landing-dl-template').addEventListener('click', handleDownloadBulkTemplate);
+    if ($('btn-close-bulk-modal')) $('btn-close-bulk-modal').addEventListener('click', closeBulkModal);
+    if ($('btn-cancel-bulk-modal')) $('btn-cancel-bulk-modal').addEventListener('click', closeBulkModal);
+    if ($('btn-modal-dl-template')) $('btn-modal-dl-template').addEventListener('click', handleDownloadBulkTemplate);
+    if ($('btn-select-bulk-file')) $('btn-select-bulk-file').addEventListener('click', () => $('input-bulk-file').click());
+    if ($('input-bulk-file')) {
+      $('input-bulk-file').addEventListener('change', (e) => {
+        handleBulkFileSelection(e.target.files && e.target.files[0]);
+      });
+    }
+    if ($('dropzone-bulk')) {
+      const dz = $('dropzone-bulk');
+      dz.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dz.style.borderColor = 'var(--emerald-600)';
+        dz.style.background = '#f0fdf4';
+      });
+      dz.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dz.style.borderColor = '#94a3b8';
+        dz.style.background = '#fff';
+      });
+      dz.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dz.style.borderColor = '#94a3b8';
+        dz.style.background = '#fff';
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+          handleBulkFileSelection(e.dataTransfer.files[0]);
+        }
+      });
+    }
+    if ($('btn-process-bulk-import')) $('btn-process-bulk-import').addEventListener('click', handleExecuteBulkImport);
+    if ($('modal-bulk-import')) {
+      $('modal-bulk-import').addEventListener('click', (e) => {
+        if (e.target === $('modal-bulk-import')) closeBulkModal();
+      });
+    }
+
+    // Acciones de Respaldo Maestro y Recuperación de Base de Datos
+    if ($('btn-topbar-backup')) $('btn-topbar-backup').addEventListener('click', openBackupModal);
+    if ($('btn-landing-backup')) $('btn-landing-backup').addEventListener('click', openBackupModal);
+    if ($('btn-close-backup-modal')) $('btn-close-backup-modal').addEventListener('click', closeBackupModal);
+    if ($('btn-close-backup-modal-bottom')) $('btn-close-backup-modal-bottom').addEventListener('click', closeBackupModal);
+    if ($('btn-backup-select-pc')) {
+      $('btn-backup-select-pc').addEventListener('click', async () => {
+        await handleSelectPCDir();
+        updateBackupModalPCStatus();
+      });
+    }
+    if ($('btn-save-master-backup-pc')) $('btn-save-master-backup-pc').addEventListener('click', handleSaveMasterBackupToPC);
+    if ($('btn-download-master-backup-json')) $('btn-download-master-backup-json').addEventListener('click', handleDownloadBackupJSON);
+    if ($('btn-download-master-backup-excel')) $('btn-download-master-backup-excel').addEventListener('click', handleDownloadBackupExcel);
+    if ($('input-restore-master-file')) {
+      $('input-restore-master-file').addEventListener('change', (e) => {
+        const btn = $('btn-execute-restore-backup');
+        if (btn) btn.disabled = !(e.target.files && e.target.files.length);
+      });
+    }
+    if ($('btn-execute-restore-backup')) $('btn-execute-restore-backup').addEventListener('click', handleExecuteRestoreBackup);
+    if ($('modal-backup')) {
+      $('modal-backup').addEventListener('click', (e) => {
+        if (e.target === $('modal-backup')) closeBackupModal();
+      });
     }
   }
 

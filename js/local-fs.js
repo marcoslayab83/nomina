@@ -168,6 +168,10 @@
     return currentRootName;
   }
 
+  function getRootHandle() {
+    return currentRootHandle;
+  }
+
   function isConnected() {
     return Boolean(currentRootHandle);
   }
@@ -653,6 +657,7 @@ UBICACIÓN EN DISCO LOCAL:
     selectRootDirectory,
     disconnectRootDirectory,
     getRootName,
+    getRootHandle,
     isConnected,
     getWorkerPathStructure,
     saveWorkerToLocalPC,

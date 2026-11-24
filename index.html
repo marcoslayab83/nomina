@@ -52,7 +52,15 @@
       </button>
 
       <button type="button" class="btn btn-ghost-light" id="btn-open-empresas" title="Crear y administrar carpetas por empresa">
-        📁 Carpetas de Empresa (<span id="top-companies-count">1</span>)
+        📁 Carpetas (<span id="top-companies-count">1</span>)
+      </button>
+
+      <button type="button" class="btn btn-ghost-light" id="btn-topbar-bulk" title="Carga masiva de trabajadores desde plantilla Excel o CSV">
+        📊 Carga Masiva
+      </button>
+
+      <button type="button" class="btn btn-ghost-light" id="btn-topbar-backup" title="Respaldo maestro en PC y restauración de base de datos" style="color:#6ee7b7;border-color:rgba(110,231,183,0.35);">
+        💾 Respaldo
       </button>
 
       <button type="button" class="btn btn-ghost-light" id="btn-open-legal" title="Consultar base legal LOTTT, IVSS, FAOV, INCES">
@@ -61,13 +69,13 @@
 
       <div class="topbar-sep"></div>
 
-      <!-- 4. Respaldo de Datos JSON -->
+      <!-- 4. Respaldo Rápido JSON -->
       <div style="display:inline-flex;gap:4px;background:rgba(255,255,255,0.06);padding:3px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);align-items:center;">
-        <button type="button" class="btn btn-ghost-light" id="btn-export-json" title="Exportar copia de seguridad en formato JSON" style="border:none;background:transparent;padding:0 10px;height:28px;font-size:12px;">
-          ⬇️ Exportar
+        <button type="button" class="btn btn-ghost-light" id="btn-export-json" title="Exportar copia de seguridad rápida en JSON" style="border:none;background:transparent;padding:0 8px;height:28px;font-size:11.5px;">
+          ⬇️ JSON
         </button>
-        <label class="btn btn-ghost-light" style="cursor:pointer;border:none;background:transparent;padding:0 10px;height:28px;font-size:12px;margin:0;" title="Restaurar copia de seguridad JSON">
-          ⬆️ Importar
+        <label class="btn btn-ghost-light" style="cursor:pointer;border:none;background:transparent;padding:0 8px;height:28px;font-size:11.5px;margin:0;" title="Restaurar copia de seguridad JSON">
+          ⬆️ JSON
           <input type="file" id="input-import-json" accept="application/json,.json" class="hidden">
         </label>
       </div>
@@ -184,14 +192,25 @@
         <!-- Directorio de Expedientes Guardados -->
         <div>
           <div class="card">
-            <div class="card-header">
+            <div class="card-header" style="flex-wrap:wrap;gap:10px;">
               <div>
                 <h2 class="card-title">Expedientes Registrados</h2>
                 <p class="card-subtitle">Organizados por carpeta de empresa y almacenados localmente.</p>
               </div>
-              <button type="button" class="btn btn-outline btn-sm" id="btn-load-samples">
-                Cargar Casos de Estudio (PDF)
-              </button>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-outline btn-sm" id="btn-landing-dl-template" title="Descargar plantilla oficial Excel para carga masiva de trabajadores">
+                  📥 Plantilla Excel
+                </button>
+                <button type="button" class="btn btn-emerald btn-sm" id="btn-landing-bulk-import" title="Cargar masivamente trabajadores desde un archivo Excel o CSV">
+                  📊 Carga Masiva
+                </button>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-landing-backup" title="Gestionar respaldos y recuperación">
+                  💾 Respaldo
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-load-samples" title="Cargar los casos de estudio oficiales LOTTT">
+                  📚 Casos de Estudio
+                </button>
+              </div>
             </div>
             <div class="card-body">
               <!-- Filtro de Carpetas por Empresa -->
@@ -1499,15 +1518,166 @@
     </div>
   </div>
 
+  <!-- Modal Carga Masiva desde Excel / CSV -->
+  <div class="modal-backdrop hidden no-print" id="modal-bulk-import">
+    <div class="modal-box" style="max-width:680px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="margin:0;font-size:16px;">📊 Carga Masiva de Trabajadores (Excel / CSV)</h3>
+          <small style="color:#cbd5e1;">Importa nóminas completas con validación legal LOTTT y creación automática de carpetas.</small>
+        </div>
+        <button type="button" class="btn btn-ghost-light btn-sm" id="btn-close-bulk-modal">Cerrar ✕</button>
+      </div>
+      <div class="modal-body" style="font-size:13px;line-height:1.6;">
+        <!-- Paso 1: Descargar Plantilla Oficial -->
+        <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:14px;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <div style="flex:1;min-width:240px;">
+              <strong style="color:var(--navy-900);font-size:13.5px;display:block;">Paso 1: Descarga la Plantilla Oficial de Carga</strong>
+              <span style="font-size:12px;color:var(--text-secondary);">
+                Incluye formato para Microsoft Excel, Google Sheets y Calc con validaciones de Sueldo, Fechas y Moneda (Bs., USD, EUR).
+              </span>
+            </div>
+            <button type="button" class="btn btn-emerald btn-sm" id="btn-modal-dl-template" style="white-space:nowrap;">
+              📥 Descargar Plantilla Excel (.xlsx)
+            </button>
+          </div>
+        </div>
+
+        <!-- Paso 2: Seleccionar o Arrastrar Archivo -->
+        <div style="background:#fff;border:2px dashed #94a3b8;border-radius:10px;padding:24px 20px;text-align:center;margin-bottom:14px;cursor:pointer;" id="dropzone-bulk">
+          <div style="font-size:32px;margin-bottom:6px;">📁</div>
+          <strong style="color:var(--navy-900);font-size:14px;display:block;margin-bottom:4px;">Paso 2: Selecciona o arrastra el archivo de trabajadores</strong>
+          <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;">Formatos soportados: <strong>.xlsx, .xls, .csv</strong></p>
+          <input type="file" id="input-bulk-file" accept=".xlsx, .xls, .csv" style="display:none;">
+          <button type="button" class="btn btn-outline" id="btn-select-bulk-file" style="padding:6px 16px;">
+            Examinar Archivo...
+          </button>
+          <div id="bulk-file-info" style="margin-top:10px;font-size:12.5px;font-weight:600;color:var(--emerald-700);display:none;">
+            Archivo seleccionado: <span id="bulk-file-name-text"></span>
+          </div>
+        </div>
+
+        <!-- Opciones de Carga -->
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px;margin-bottom:16px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#166534;cursor:pointer;margin:0;">
+            <input type="checkbox" id="chk-bulk-sync-pc" checked>
+            <strong>Crear y sincronizar automáticamente las carpetas físicas en mi PC vinculada</strong>
+          </label>
+          <span style="display:block;font-size:11px;color:#15803d;margin-top:4px;margin-left:22px;">
+            Si tienes una carpeta en PC seleccionada, se generará la estructura <code>[Empresa] \ [Departamento] \ [Trabajador]</code> con sus fichas.
+          </span>
+        </div>
+
+        <!-- Resultados del procesamiento (inicialmente oculto) -->
+        <div id="bulk-results-box" class="hidden" style="margin-bottom:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+            <div style="background:#dcfce7;color:#166534;padding:6px 12px;border-radius:6px;font-weight:700;font-size:12px;">
+              ✅ Creados: <span id="res-bulk-created">0</span>
+            </div>
+            <div style="background:#e0e7ff;color:#3730a3;padding:6px 12px;border-radius:6px;font-weight:700;font-size:12px;">
+              🔄 Actualizados: <span id="res-bulk-updated">0</span>
+            </div>
+            <div style="background:#f1f5f9;color:#334155;padding:6px 12px;border-radius:6px;font-weight:700;font-size:12px;">
+              📄 Total Filas: <span id="res-bulk-total">0</span>
+            </div>
+          </div>
+          <div id="bulk-errors-list" style="max-height:120px;overflow-y:auto;font-size:11.5px;color:#991b1b;background:#fee2e2;padding:8px 10px;border-radius:4px;display:none;"></div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;">
+          <button type="button" class="btn btn-outline" id="btn-cancel-bulk-modal">Cancelar</button>
+          <button type="button" class="btn btn-emerald" id="btn-process-bulk-import" disabled style="padding:8px 20px;">
+            🚀 Procesar e Importar Trabajadores
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Respaldo Maestro y Recuperación de Base de Datos -->
+  <div class="modal-backdrop hidden no-print" id="modal-backup">
+    <div class="modal-box" style="max-width:680px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="margin:0;font-size:16px;">💾 Respaldo Maestro y Recuperación de Base de Datos</h3>
+          <small style="color:#cbd5e1;">Exporta tu base de datos completa a tu PC y recupérala con un solo clic si alguna vez se borra.</small>
+        </div>
+        <button type="button" class="btn btn-ghost-light btn-sm" id="btn-close-backup-modal">Cerrar ✕</button>
+      </div>
+      <div class="modal-body" style="font-size:13px;line-height:1.6;">
+
+        <!-- 1. Exportar a PC y Descargas -->
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;margin-bottom:16px;">
+          <strong style="color:#166534;font-size:14px;display:block;margin-bottom:6px;">🛡️ Exportar Respaldo Completo a la PC</strong>
+          <p style="font-size:12px;color:#15803d;margin:0 0 10px;">
+            Guarda en un solo paso todos los expedientes, historial de sueldos, carpetas de empresas y tasas de cambio oficiales directamente en tu carpeta de PC y descarga copias de seguridad.
+          </p>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:8px 12px;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <div style="font-size:12px;color:#334155;">
+              📁 Carpeta vinculada en PC: <strong id="backup-pc-folder-label" style="color:#047857;">Verificando...</strong>
+            </div>
+            <button type="button" class="btn btn-outline btn-xs" id="btn-backup-select-pc">
+              📂 Seleccionar / Cambiar Carpeta
+            </button>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-emerald" id="btn-save-master-backup-pc" style="flex:1;min-width:260px;padding:10px 16px;">
+              💾 Guardar Respaldo Maestro en PC (JSON + Excel)
+            </button>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline btn-sm" id="btn-download-master-backup-json" style="flex:1;">
+              ⬇️ Descargar Copia JSON
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-download-master-backup-excel" style="flex:1;">
+              📊 Descargar Libro Consolidado Excel (.xlsx)
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. Restaurar Base de Datos desde Respaldo -->
+        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px;margin-bottom:14px;">
+          <strong style="color:#92400e;font-size:14px;display:block;margin-bottom:6px;">🔄 Restaurar Base de Datos desde Archivo de Respaldo</strong>
+          <p style="font-size:12px;color:#78350f;margin:0 0 10px;">
+            Si por alguna razón se borra el historial o caché del navegador, cambias de equipo o deseas restaurar información previa, selecciona tu archivo <code>RESPALDO_MAESTRO_NOMINA.json</code> y el sistema repondrá todas tus empresas, trabajadores, cálculos y tasas de cambio al instante.
+          </p>
+
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:10px 12px;margin-bottom:10px;">
+            <label for="input-restore-master-file" style="display:block;font-weight:600;font-size:12px;margin-bottom:6px;color:#1e293b;">
+              Seleccionar archivo de respaldo (.json):
+            </label>
+            <input type="file" id="input-restore-master-file" accept="application/json,.json" style="font-size:12px;width:100%;">
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;">
+            <button type="button" class="btn btn-warning" id="btn-execute-restore-backup" disabled style="padding:8px 18px;background:#d97706;color:#fff;border:none;">
+              ⚠️ Restaurar Base de Datos Ahora
+            </button>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;">
+          <button type="button" class="btn btn-outline" id="btn-close-backup-modal-bottom">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Contenedor de Notificaciones Toast -->
   <div class="toast-container no-print" id="toast-container"></div>
 
   <!-- Scripts de la aplicación -->
+  <script src="js/vendor/xlsx.full.min.js"></script>
   <script src="js/calculations.js?v=2.6"></script>
   <script src="js/currency.js?v=2.6"></script>
   <script src="js/storage.js?v=2.6"></script>
   <script src="js/print-renderer.js?v=2.6"></script>
   <script src="js/local-fs.js?v=2.6"></script>
+  <script src="js/bulk-import-export.js?v=2.6"></script>
   <script src="js/app.js?v=2.6"></script>
 </body>
 </html>
